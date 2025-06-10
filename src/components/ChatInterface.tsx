@@ -46,7 +46,9 @@ const ChatInterface: React.FC = () => {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    // Remove mensagens anteriores do usuário e da IA, mantendo apenas a mensagem inicial
+    const initialMessage = messages[0];
+    setMessages([initialMessage, userMessage]);
     setIsLoading(true);
 
     try {
@@ -59,10 +61,13 @@ const ChatInterface: React.FC = () => {
         timestamp: new Date(),
       };
 
-      setMessages(prev => [...prev, aiMessage]);
+      // Substitui completamente as mensagens: mensagem inicial + nova mensagem do usuário + resposta da IA
+      setMessages([initialMessage, userMessage, aiMessage]);
     } catch (error) {
       toast.error('Erro ao enviar mensagem. Tente novamente.');
       console.error('Erro:', error);
+      // Em caso de erro, volta para apenas a mensagem inicial
+      setMessages([initialMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -71,7 +76,7 @@ const ChatInterface: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       <ScrollArea ref={scrollAreaRef} className="flex-1 px-2">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl mx-auto pb-4">
           {messages.map((message) => (
             <ChatMessage
               key={message.id}
