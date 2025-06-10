@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ShoppingBag, Shield } from 'lucide-react';
 import ChatInterface from '@/components/ChatInterface';
@@ -33,15 +32,6 @@ const Index = () => {
           <ChatInterface />
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t px-4 py-3">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-xs text-gray-500">
-            Powered by Gemini 1.5 Flash • Para informações oficiais, consulte a central de ajuda da Shopee
-          </p>
-        </div>
-      </footer>
     </div>
   );
 };

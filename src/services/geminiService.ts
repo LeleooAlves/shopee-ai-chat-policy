@@ -1,4 +1,3 @@
-
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const API_KEY = 'AIzaSyDNm9chlq0QHcFGcCM_2TTxTczqrCC7GFE';
@@ -24,9 +23,10 @@ const model = genAI.getGenerativeModel({
   Mantenha um tom profissional mas seja conciso.`
 });
 
-export const sendMessageToGemini = async (message: string): Promise<string> => {
+export const sendMessageToGemini = async (message: string, politicas: string): Promise<string> => {
   try {
-    const result = await model.generateContent(message);
+    const prompt = `Considere as seguintes políticas da Shopee ao responder a pergunta abaixo. Responda SOMENTE com base nessas políticas, sem inventar informações.\n\nPOLÍTICAS:\n${politicas}\n\nPERGUNTA:\n${message}`;
+    const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text();
   } catch (error) {

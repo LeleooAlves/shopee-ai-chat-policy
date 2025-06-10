@@ -1,10 +1,10 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import { sendMessageToGemini } from '@/services/geminiService';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import politicasShopee from '@/data/Politicas Proibidos - Shopee.txt?raw';
 
 interface Message {
   id: string;
@@ -52,7 +52,7 @@ const ChatInterface: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await sendMessageToGemini(messageText);
+      const response = await sendMessageToGemini(messageText, politicasShopee);
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -75,34 +75,36 @@ const ChatInterface: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <ScrollArea ref={scrollAreaRef} className="flex-1 px-2">
-        <div className="max-w-4xl mx-auto pb-4">
-          {messages.map((message) => (
-            <ChatMessage
-              key={message.id}
-              message={message.text}
-              isUser={message.isUser}
-              timestamp={message.timestamp}
-            />
-          ))}
-          {isLoading && (
-            <div className="flex gap-3 p-4">
-              <div className="flex gap-3 max-w-[80%]">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-                </div>
-                <div className="rounded-lg p-3 bg-muted text-muted-foreground">
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+      <div className="flex-1 flex flex-col max-h-[500px] min-h-[300px]">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 px-2 h-full">
+          <div className="max-w-4xl mx-auto pb-4">
+            {messages.map((message) => (
+              <ChatMessage
+                key={message.id}
+                message={message.text}
+                isUser={message.isUser}
+                timestamp={message.timestamp}
+              />
+            ))}
+            {isLoading && (
+              <div className="flex gap-3 p-4">
+                <div className="flex gap-3 max-w-[80%]">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                  </div>
+                  <div className="rounded-lg p-3 bg-muted text-muted-foreground">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
       <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
     </div>
   );
