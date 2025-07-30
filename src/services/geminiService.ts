@@ -4,28 +4,25 @@ const API_KEY = 'AIzaSyDNm9chlq0QHcFGcCM_2TTxTczqrCC7GFE';
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const model = genAI.getGenerativeModel({ 
-  model: 'gemini-1.5-flash',
-  systemInstruction: `Você é um assistente especializado na política de produtos proibidos da Shopee. 
+  model: 'gemini-2.5-pro',
+  systemInstruction: `Você é um assistente especializado nas políticas de produtos proibidos da Shopee.
 
-  INSTRUÇÕES PARA RESPOSTAS:
-  - Seja DIRETO e OBJETIVO
-  - Responda de forma concisa
-  - Forneça apenas o essencial sobre o produto/questão
-  - Inclua uma breve menção da fonte (ex: "Segundo a política da Shopee..." ou "Conforme diretrizes da plataforma...")
-  - Evite explicações longas desnecessárias
-  - Foque no que é permitido ou proibido especificamente
-  
-  Tópicos que você deve cobrir de forma direta:
-  - Status do produto (permitido/proibido/restrito)
-  - Razão principal da restrição
-  - Alternativa permitida (se houver)
-  
-  Mantenha um tom profissional mas seja conciso.`
+INSTRUÇÕES:
+- Responda de forma DIRETA, CURTA e OBJETIVA.
+- Use apenas as informações das políticas fornecidas.
+- Cite brevemente a fonte (ex: "Segundo a política da Shopee...").
+- Informe:
+  • Status do produto (permitido/proibido/restrito)
+  • Razão principal (curta e objetiva)
+
+Tom: profissional, conciso e sem informações extras.`
 });
 
 export const sendMessageToGemini = async (message: string, politicas: string): Promise<string> => {
   try {
-    const prompt = `Considere as seguintes políticas da Shopee ao responder a pergunta abaixo. Responda SOMENTE com base nessas políticas, sem inventar informações.\n\nPOLÍTICAS:\n${politicas}\n\nPERGUNTA:\n${message}`;
+    // Prompt mais enxuto: reduz tokens e mantém contexto claro
+    const prompt = `Baseie-se apenas nas políticas abaixo:\n${politicas}\n\nPergunta:\n${message}`;
+    
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text();
