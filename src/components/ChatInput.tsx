@@ -7,14 +7,15 @@ import { Textarea } from '@/components/ui/textarea';
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
   isLoading: boolean;
+  cooldown?: number; // novo: segundos restantes
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
+const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading, cooldown = 0 }) => {
   const [message, setMessage] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim() && !isLoading) {
+    if (message.trim() && !isLoading && cooldown === 0) {
       onSendMessage(message.trim());
       setMessage('');
     }
@@ -29,19 +30,19 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
 
   return (
     <form onSubmit={handleSubmit} className="p-4 border-t bg-background">
-      <div className="flex gap-2 max-w-4xl mx-auto">
+      <div className="flex gap-2 max-w-4xl mx-auto items-center">
         <Textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Digite sua pergunta sobre a política de proibidos da Shopee..."
           className="min-h-[50px] max-h-[120px] resize-none"
-          disabled={isLoading}
+          disabled={isLoading || cooldown > 0}
         />
         <Button 
           type="submit" 
           size="icon"
-          disabled={!message.trim() || isLoading}
+          disabled={!message.trim() || isLoading || cooldown > 0}
           className="h-[50px] w-[50px] flex-shrink-0"
         >
           {isLoading ? (
@@ -50,6 +51,11 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
             <Send className="h-4 w-4" />
           )}
         </Button>
+        {cooldown > 0 && (
+          <span className="ml-2 text-sm text-orange-600 font-semibold min-w-[60px] text-center">
+            Aguarde {cooldown}s
+          </span>
+        )}
       </div>
     </form>
   );

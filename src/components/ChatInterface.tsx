@@ -23,7 +23,22 @@ const ChatInterface: React.FC = () => {
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0); // segundos restantes
+  const cooldownRef = useRef<NodeJS.Timeout | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (cooldown > 0) {
+      cooldownRef.current = setTimeout(() => {
+        setCooldown((prev) => prev - 1);
+      }, 1000);
+    } else if (cooldownRef.current) {
+      clearTimeout(cooldownRef.current);
+    }
+    return () => {
+      if (cooldownRef.current) clearTimeout(cooldownRef.current);
+    };
+  }, [cooldown]);
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
@@ -39,6 +54,7 @@ const ChatInterface: React.FC = () => {
   }, [messages]);
 
   const handleSendMessage = async (messageText: string) => {
+    if (cooldown > 0) return; // bloqueia envio se ainda estiver no cooldown
     const userMessage: Message = {
       id: Date.now().toString(),
       text: messageText,
@@ -46,27 +62,23 @@ const ChatInterface: React.FC = () => {
       timestamp: new Date(),
     };
 
-    // Remove mensagens anteriores do usuário e da IA, mantendo apenas a mensagem inicial
     const initialMessage = messages[0];
     setMessages([initialMessage, userMessage]);
     setIsLoading(true);
+    setCooldown(60); // inicia cooldown de 60 segundos
 
     try {
       const response = await sendMessageToGemini(messageText, politicasShopee);
-      
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: response,
         isUser: false,
         timestamp: new Date(),
       };
-
-      // Substitui completamente as mensagens: mensagem inicial + nova mensagem do usuário + resposta da IA
       setMessages([initialMessage, userMessage, aiMessage]);
     } catch (error) {
       toast.error('Erro ao enviar mensagem. Tente novamente.');
       console.error('Erro:', error);
-      // Em caso de erro, volta para apenas a mensagem inicial
       setMessages([initialMessage]);
     } finally {
       setIsLoading(false);
@@ -105,7 +117,7 @@ const ChatInterface: React.FC = () => {
           </div>
         </ScrollArea>
       </div>
-      <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+      <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} cooldown={cooldown} />
     </div>
   );
 };
