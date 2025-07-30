@@ -4,7 +4,7 @@ const API_KEY = 'AIzaSyDNm9chlq0QHcFGcCM_2TTxTczqrCC7GFE';
 const genAI = new GoogleGenerativeAI(API_KEY);
 
 const model = genAI.getGenerativeModel({ 
-  model: 'gemini-1.5-flash',
+  model: 'gemini-2.5-flash-lite',
   systemInstruction: `Você é um assistente especializado na política de produtos proibidos da Shopee. 
 
   INSTRUÇÕES PARA RESPOSTAS:
