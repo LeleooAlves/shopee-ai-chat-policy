@@ -13,6 +13,9 @@ interface Message {
   timestamp: Date;
 }
 
+const COOLDOWN_KEY = 'chat_cooldown_timestamp';
+const COOLDOWN_SECONDS = 60;
+
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -26,6 +29,19 @@ const ChatInterface: React.FC = () => {
   const [cooldown, setCooldown] = useState(0); // segundos restantes
   const cooldownRef = useRef<NodeJS.Timeout | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // Ao montar, verifica se há cooldown salvo
+  useEffect(() => {
+    const lastTimestamp = localStorage.getItem(COOLDOWN_KEY);
+    if (lastTimestamp) {
+      const last = parseInt(lastTimestamp, 10);
+      const now = Date.now();
+      const diff = Math.floor((now - last) / 1000);
+      if (diff < COOLDOWN_SECONDS) {
+        setCooldown(COOLDOWN_SECONDS - diff);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (cooldown > 0) {
@@ -65,7 +81,8 @@ const ChatInterface: React.FC = () => {
     const initialMessage = messages[0];
     setMessages([initialMessage, userMessage]);
     setIsLoading(true);
-    setCooldown(60); // inicia cooldown de 60 segundos
+    setCooldown(COOLDOWN_SECONDS); // inicia cooldown de 60 segundos
+    localStorage.setItem(COOLDOWN_KEY, Date.now().toString()); // salva timestamp
 
     try {
       const response = await sendMessageToGemini(messageText, politicasShopee);
