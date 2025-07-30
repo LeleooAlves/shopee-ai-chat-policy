@@ -5,7 +5,7 @@ const genAI = new GoogleGenerativeAI(API_KEY);
 
 const model = genAI.getGenerativeModel({ 
   model: 'gemini-2.5-pro',
-  systemInstruction: `Você é um assistente especializado nas políticas de produtos proibidos da Shopee.
+  systemInstruction: `Você é um assistente especializado nas políticas de produtos proibidos da Shopee!.
 
 INSTRUÇÕES:
 - Responda de forma DIRETA, CURTA e OBJETIVA.
