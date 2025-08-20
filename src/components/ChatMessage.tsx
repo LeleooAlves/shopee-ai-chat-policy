@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { User, Bot } from 'lucide-react';
 
 interface ChatMessageProps {
@@ -9,6 +9,22 @@ interface ChatMessageProps {
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp }) => {
+  const formatted = useMemo(() => {
+    if (isUser) return { content: message };
+
+    const lower = message.toLowerCase();
+    const isPolicyResponse = lower.includes('segundo a política');
+    const isProibido = isPolicyResponse && /\bproibid[oa]s?\b/.test(lower);
+    const isPermitido = isPolicyResponse && /\bpermitid[oa]s?\b/.test(lower);
+
+    // Extrair "Alternativa: ..." se houver
+    const altIndex = message.indexOf('Alternativa:');
+    const mainText = altIndex >= 0 ? message.slice(0, altIndex).trim() : message.trim();
+    const altText = altIndex >= 0 ? message.slice(altIndex).trim() : '';
+
+    return { content: mainText, alternative: altText, isProibido, isPermitido, isPolicyResponse };
+  }, [message, isUser]);
+
   return (
     <div className={`flex gap-3 p-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className={`flex gap-3 max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -22,7 +38,28 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
             ? 'bg-primary text-primary-foreground' 
             : 'bg-muted text-muted-foreground'
         }`}>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message}</p>
+          {isUser ? (
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message}</p>
+          ) : (
+            <div className="text-sm leading-relaxed whitespace-pre-wrap">
+              {formatted?.isPolicyResponse && formatted?.isProibido && (
+                <span className="font-bold uppercase inline-block rounded px-1.5 py-0.5 bg-red-100 text-red-700 mr-1">proibido</span>
+              )}
+              {formatted?.isPolicyResponse && formatted?.isPermitido && !formatted?.isProibido && (
+                <span className="font-bold uppercase inline-block rounded px-1.5 py-0.5 bg-green-100 text-green-700 mr-1">permitido</span>
+              )}
+              {formatted?.isPolicyResponse && (formatted?.isProibido || formatted?.isPermitido) && ''}
+              <span>{formatted?.content}</span>
+              {formatted?.alternative && (
+                <>
+                  {'\n'}
+                  <span className="font-semibold inline-block rounded px-1 bg-yellow-100 text-yellow-800">Alternativa</span>
+                  {': '}
+                  <span>{formatted?.alternative.replace(/^Alternativa:\s*/,'')}</span>
+                </>
+              )}
+            </div>
+          )}
           <span className="text-xs opacity-70 mt-2 block">
             {timestamp.toLocaleTimeString('pt-BR', { 
               hour: '2-digit', 

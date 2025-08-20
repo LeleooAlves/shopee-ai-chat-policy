@@ -7,15 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
   isLoading: boolean;
-  cooldown?: number; // novo: segundos restantes
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading, cooldown = 0 }) => {
+const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
   const [message, setMessage] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim() && !isLoading && cooldown === 0) {
+    if (message.trim() && !isLoading) {
       onSendMessage(message.trim());
       setMessage('');
     }
@@ -37,12 +36,12 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading, cooldow
           onKeyPress={handleKeyPress}
           placeholder="Digite sua pergunta sobre a política de proibidos da Shopee..."
           className="min-h-[50px] max-h-[120px] resize-none"
-          disabled={isLoading || cooldown > 0}
+          disabled={isLoading}
         />
         <Button 
           type="submit" 
           size="icon"
-          disabled={!message.trim() || isLoading || cooldown > 0}
+          disabled={!message.trim() || isLoading}
           className="h-[50px] w-[50px] flex-shrink-0"
         >
           {isLoading ? (
@@ -51,11 +50,6 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading, cooldow
             <Send className="h-4 w-4" />
           )}
         </Button>
-        {cooldown > 0 && (
-          <span className="ml-2 text-sm text-orange-600 font-semibold min-w-[60px] text-center">
-            Aguarde {cooldown}s
-          </span>
-        )}
       </div>
     </form>
   );
