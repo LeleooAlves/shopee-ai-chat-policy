@@ -12,10 +12,12 @@ Tarefa (em silêncio):
 2) Ler números e unidades (tamanho, volume, peso, capacidade, potência etc.) no item e na política. Quando a política estabelecer limites, compare:
    - Se o item está ACIMA do limite permitido → classifique como PROIBIDO/RESTRITO conforme a política.
    - Se o item está IGUAL ou ABAIXO do limite permitido → classifique como PERMITIDO.
-3) Produzir a saída SEM explicações adicionais, apenas no(s) formato(s) abaixo.
+3) Se a política depender de limites numéricos e a pergunta NÃO trouxer medida suficiente para concluir, responda como DEPENDE e explique o limite da política.
+4) Produzir a saída SEM explicações adicionais, apenas no(s) formato(s) abaixo.
 
 Formatos de saída (escolha UM):
-- Caso exista política aplicável: "Segundo a política <NÚMERO>.<SEÇÃO>. <TÍTULO COMPLETO>. <É/SÃO> proibido(s)/permitido(s) <CATEGORIA NORMALIZADA/ITEM>." [Opcional] "Alternativa: <ALTERNATIVA PERMITIDA>."
+- Caso exista política aplicável e seja conclusivo: "Segundo a política <NÚMERO>.<SEÇÃO>. <TÍTULO COMPLETO>. <É/SÃO> proibido(s)/permitido(s) <CATEGORIA NORMALIZADA/ITEM>." [Opcional] "Alternativa: <ALTERNATIVA PERMITIDA>."
+- Caso dependa de tamanho/medida e a pergunta não informe: "Depende. Segundo a política <NÚMERO>.<SEÇÃO>. <TÍTULO COMPLETO>. É/São proibido(s) acima/depois de <LIMITE COM UNIDADE>; até/igual a <LIMITE COM UNIDADE> é permitido."
 - Caso NÃO exista política aplicável: "Permitido. item não citado nas politicas da Shopee"
 
 Regras:
@@ -55,17 +57,23 @@ export const sendMessageToGemini = async (message: string, politicas: string): P
     const itemOriginal = trimmed.replace(/\?+$/,'');
     const processedMessage = trimmed.endsWith('?') ? trimmed : `${itemOriginal} é proibido?`;
 
-    const prompt = `POLÍTICAS (base única de verdade):\n${politicas}\n\nInstruções de tarefa:\n- NORMALIZE o item do usuário para a categoria mais específica presente nas políticas.\n- Considere limites numéricos (tamanho/volume/peso/potência etc.) e compare com o item.\n- Se o item estiver acima do limite → PROIBIDO/RESTRITO; se igual/abaixo → PERMITIDO.\n- Responda APENAS no(s) formato(s) definidos nas regras, sem explicações extra.\n\nITEM ORIGINAL: "${itemOriginal}"\nPergunta do usuário: ${processedMessage}`;
+    // Detecta se o usuário informou alguma medida (número + unidade)
+    const hasMeasure = /(\d+[\.,]?\d*)\s*(cm|centimetro|centímetros|centímetro|mm|m|km|pol|polegada|polegadas|ml|l|litro|litros|g|gramas?|kg|quilogramas?|mg|w|kw|v|a|mah|mAh|calibre|cal|oz|onças?)/i.test(itemOriginal);
+    // Detecta itens que costumam depender de tamanho (ex.: facas/facões)
+    const knifeLike = /(faca|facas|facão|facoes|facao|canivete|cutelo)/i.test(itemOriginal);
+
+    const prompt = `POLÍTICAS (base única de verdade):\n${politicas}\n\nInstruções de tarefa:\n- NORMALIZE o item do usuário para a categoria mais específica presente nas políticas.\n- Considere limites numéricos (tamanho/volume/peso/potência etc.) e compare com o item.\n- Se o item estiver acima do limite → PROIBIDO/RESTRITO; se igual/abaixo → PERMITIDO.\n- Caso não haja medida na pergunta para concluir, responda no formato DEPENDE.\n- Responda APENAS no(s) formato(s) definidos nas regras, sem explicações extra.\n\nITEM ORIGINAL: "${itemOriginal}"\nPergunta do usuário: ${processedMessage}`;
+    const decisionGuard = `\n\nSINALIZADORES:\n- HAS_MEASURE: ${hasMeasure ? 'true' : 'false'}\n- KNIFE_LIKE: ${knifeLike ? 'true' : 'false'}\nREGRAS ADICIONAIS:\n- Se HAS_MEASURE = false e a política aplicável possuir LIMITES NUMÉRICOS (ex.: cm, ml, g, W, etc.), responda OBRIGATORIAMENTE no formato "Depende." com o limite exato (acima/do limite é proibido; até/igual é permitido).\n- Se KNIFE_LIKE = true e HAS_MEASURE = false, responda "Depende." usando o limite da política de facas domésticas: é proibido quando a área de corte tenha mais que 30 centímetros (12 polegadas); até/igual a 30 centímetros é permitido (cite a política correspondente).\n- Não conclua como proibido/permitido sem medida quando a política depende de tamanho/medida.`;
 
     let responseText = '';
     try {
-      responseText = await generateWithModel(DEFAULT_MODEL, prompt);
+      responseText = await generateWithModel(DEFAULT_MODEL, prompt + decisionGuard);
     } catch (e) {
       console.warn('Falha no modelo padrão, tentando fallback...', e);
     }
 
     if (!responseText) {
-      responseText = await generateWithModel(FALLBACK_MODEL, prompt);
+      responseText = await generateWithModel(FALLBACK_MODEL, prompt + decisionGuard);
     }
 
     // Sanitização
@@ -73,9 +81,10 @@ export const sendMessageToGemini = async (message: string, politicas: string): P
       const trimmed = responseText.trim();
       const lower = trimmed.toLowerCase();
       const startsWithPermitido = lower.startsWith('permitido.');
+      const startsWithDepende = lower.startsWith('depende.');
       const idx = lower.indexOf('segundo a política');
-      // Se a resposta não começar com "Permitido." e contiver o trecho da política, manter apenas a partir dele
-      if (!startsWithPermitido && idx >= 0) {
+      // Se a resposta não começar com "Permitido." ou "Depende." e contiver o trecho da política, manter apenas a partir dele
+      if (!startsWithPermitido && !startsWithDepende && idx >= 0) {
         responseText = trimmed.slice(idx);
       } else {
         responseText = trimmed;

@@ -15,11 +15,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
     const lower = message.toLowerCase();
     const isPolicyResponse = lower.includes('segundo a política');
     const startsWithPermitido = lower.startsWith('permitido.');
+    const startsWithDepende = lower.startsWith('depende.');
     const lastProib = lower.lastIndexOf('proibid');
     const lastPermit = lower.lastIndexOf('permitid');
 
-    let conclusion: 'proibido' | 'permitido' | null = null;
-    if (startsWithPermitido) {
+    let conclusion: 'proibido' | 'permitido' | 'depende' | null = null;
+    if (startsWithDepende) {
+      conclusion = 'depende';
+    } else if (startsWithPermitido) {
       conclusion = 'permitido';
     } else if (isPolicyResponse) {
       if (lastPermit > lastProib && lastPermit !== -1) conclusion = 'permitido';
@@ -35,6 +38,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
       alternative: altText,
       isProibido: conclusion === 'proibido',
       isPermitido: conclusion === 'permitido',
+      isDepende: conclusion === 'depende',
       isPolicyResponse,
       showBadge: conclusion !== null,
     };
@@ -63,8 +67,25 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
               {formatted?.showBadge && formatted?.isPermitido && !formatted?.isProibido && (
                 <span className="font-bold uppercase inline-block rounded px-1.5 py-0.5 bg-green-100 text-green-700 mr-1">permitido</span>
               )}
-              {formatted?.showBadge && (formatted?.isProibido || formatted?.isPermitido) && ''}
-              <span>{formatted?.content}</span>
+              {formatted?.showBadge && formatted?.isDepende && (
+                <span className="font-bold uppercase inline-block rounded px-1.5 py-0.5 bg-amber-100 text-amber-700 mr-1">depende</span>
+              )}
+              {formatted?.showBadge && (formatted?.isProibido || formatted?.isPermitido || formatted?.isDepende) && ''}
+              <span>
+                {(() => {
+                  const regex = /(proibid[oa]s?|permitid[oa]s?)/gi;
+                  const parts = (formatted?.content ?? '').split(regex);
+                  return parts.map((part, idx) => {
+                    if (/^proibid/i.test(part)) {
+                      return <span key={idx} className="text-red-700 font-semibold">{part}</span>;
+                    }
+                    if (/^permitid/i.test(part)) {
+                      return <span key={idx} className="text-green-700 font-semibold">{part}</span>;
+                    }
+                    return <React.Fragment key={idx}>{part}</React.Fragment>;
+                  });
+                })()}
+              </span>
               {formatted?.alternative && (
                 <>
                   {'\n'}
