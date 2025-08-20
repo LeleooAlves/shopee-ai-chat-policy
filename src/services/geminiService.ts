@@ -8,18 +8,21 @@ const FALLBACK_MODEL = 'gemini-2.5-flash';
 const SYSTEM_INSTRUCTION = `Você é um assistente especializado nas políticas de produtos proibidos da Shopee.
 
 Tarefa (em silêncio):
-1) Interpretar e NORMALIZAR o item enviado pelo usuário para a categoria normativa mais específica que exista nas políticas (ex.: "muda de samambaia" → "planta viva").
-2) Identificar a política mais adequada (número, seção e título exatos) que proíbe/restringe/permite a categoria normalizada.
-3) Responder SOMENTE com o trecho a partir de "Segundo a política ..." no formato a seguir.
+1) Interpretar e NORMALIZAR o item enviado pelo usuário para a categoria normativa mais específica existente nas políticas (ex.: "muda de samambaia" → "planta viva").
+2) Ler números e unidades (tamanho, volume, peso, capacidade, potência etc.) no item e na política. Quando a política estabelecer limites, compare:
+   - Se o item está ACIMA do limite permitido → classifique como PROIBIDO/RESTRITO conforme a política.
+   - Se o item está IGUAL ou ABAIXO do limite permitido → classifique como PERMITIDO.
+3) Produzir a saída SEM explicações adicionais, apenas no(s) formato(s) abaixo.
 
-Formato OBRIGATÓRIO DE SAÍDA (não escreva nada além disso):
-Segundo a política <NÚMERO>.<SEÇÃO>. <TÍTULO COMPLETO>. <É/SÃO> proibido(s) <CATEGORIA NORMALIZADA>. [Opcional] Alternativa: <ALTERNATIVA PERMITIDA>.
+Formatos de saída (escolha UM):
+- Caso exista política aplicável: "Segundo a política <NÚMERO>.<SEÇÃO>. <TÍTULO COMPLETO>. <É/SÃO> proibido(s)/permitido(s) <CATEGORIA NORMALIZADA/ITEM>." [Opcional] "Alternativa: <ALTERNATIVA PERMITIDA>."
+- Caso NÃO exista política aplicável: "Permitido. item não citado nas politicas da Shopee"
 
 Regras:
-- Seja DIRETO, CURTO e OBJETIVO.
+- Seja DIRETO, CURTO e OBJETIVO; não inclua justificativas extras, exemplos, notas ou a palavra "Pergunta".
 - Use somente as políticas fornecidas como base. Não invente nada.
 - Não inclua colchetes.
-- Se não houver política aplicável, responda exatamente: "Sem base nas políticas fornecidas."`;
+- Quando houver alternativa clara nas políticas, inclua-a após "Alternativa:".`;
 
 function createModel(name: string) {
   return genAI.getGenerativeModel({
@@ -52,7 +55,7 @@ export const sendMessageToGemini = async (message: string, politicas: string): P
     const itemOriginal = trimmed.replace(/\?+$/,'');
     const processedMessage = trimmed.endsWith('?') ? trimmed : `${itemOriginal} é proibido?`;
 
-    const prompt = `POLÍTICAS (base única de verdade):\n${politicas}\n\nInstruções de tarefa:\n- Primeiro, NORMALIZE o item do usuário para a categoria normativa mais específica contida nas políticas.\n- Exemplos: "muda de samambaia" → "planta viva" (JARDINAGEM 8.4).\n- Depois, selecione a política mais adequada e responda SOMENTE no formato exigido.\n\nITEM ORIGINAL: "${itemOriginal}"\nPergunta do usuário: ${processedMessage}`;
+    const prompt = `POLÍTICAS (base única de verdade):\n${politicas}\n\nInstruções de tarefa:\n- NORMALIZE o item do usuário para a categoria mais específica presente nas políticas.\n- Considere limites numéricos (tamanho/volume/peso/potência etc.) e compare com o item.\n- Se o item estiver acima do limite → PROIBIDO/RESTRITO; se igual/abaixo → PERMITIDO.\n- Responda APENAS no(s) formato(s) definidos nas regras, sem explicações extra.\n\nITEM ORIGINAL: "${itemOriginal}"\nPergunta do usuário: ${processedMessage}`;
 
     let responseText = '';
     try {
@@ -65,13 +68,19 @@ export const sendMessageToGemini = async (message: string, politicas: string): P
       responseText = await generateWithModel(FALLBACK_MODEL, prompt);
     }
 
-    // Sanitização: manter apenas o trecho a partir de "Segundo a política" e remover colchetes
+    // Sanitização
     if (responseText) {
-      const lower = responseText.toLowerCase();
+      const trimmed = responseText.trim();
+      const lower = trimmed.toLowerCase();
+      const startsWithPermitido = lower.startsWith('permitido.');
       const idx = lower.indexOf('segundo a política');
-      if (idx >= 0) {
-        responseText = responseText.slice(idx);
+      // Se a resposta não começar com "Permitido." e contiver o trecho da política, manter apenas a partir dele
+      if (!startsWithPermitido && idx >= 0) {
+        responseText = trimmed.slice(idx);
+      } else {
+        responseText = trimmed;
       }
+      // Remover colchetes
       responseText = responseText.replace(/[\[\]]/g, '').trim();
     }
 

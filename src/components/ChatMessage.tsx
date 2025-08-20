@@ -14,15 +14,30 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
 
     const lower = message.toLowerCase();
     const isPolicyResponse = lower.includes('segundo a política');
-    const isProibido = isPolicyResponse && /\bproibid[oa]s?\b/.test(lower);
-    const isPermitido = isPolicyResponse && /\bpermitid[oa]s?\b/.test(lower);
+    const startsWithPermitido = lower.startsWith('permitido.');
+    const lastProib = lower.lastIndexOf('proibid');
+    const lastPermit = lower.lastIndexOf('permitid');
 
-    // Extrair "Alternativa: ..." se houver
+    let conclusion: 'proibido' | 'permitido' | null = null;
+    if (startsWithPermitido) {
+      conclusion = 'permitido';
+    } else if (isPolicyResponse) {
+      if (lastPermit > lastProib && lastPermit !== -1) conclusion = 'permitido';
+      else if (lastProib > lastPermit && lastProib !== -1) conclusion = 'proibido';
+    }
+
     const altIndex = message.indexOf('Alternativa:');
     const mainText = altIndex >= 0 ? message.slice(0, altIndex).trim() : message.trim();
     const altText = altIndex >= 0 ? message.slice(altIndex).trim() : '';
 
-    return { content: mainText, alternative: altText, isProibido, isPermitido, isPolicyResponse };
+    return {
+      content: mainText,
+      alternative: altText,
+      isProibido: conclusion === 'proibido',
+      isPermitido: conclusion === 'permitido',
+      isPolicyResponse,
+      showBadge: conclusion !== null,
+    };
   }, [message, isUser]);
 
   return (
@@ -42,13 +57,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{message}</p>
           ) : (
             <div className="text-sm leading-relaxed whitespace-pre-wrap">
-              {formatted?.isPolicyResponse && formatted?.isProibido && (
+              {formatted?.showBadge && formatted?.isProibido && (
                 <span className="font-bold uppercase inline-block rounded px-1.5 py-0.5 bg-red-100 text-red-700 mr-1">proibido</span>
               )}
-              {formatted?.isPolicyResponse && formatted?.isPermitido && !formatted?.isProibido && (
+              {formatted?.showBadge && formatted?.isPermitido && !formatted?.isProibido && (
                 <span className="font-bold uppercase inline-block rounded px-1.5 py-0.5 bg-green-100 text-green-700 mr-1">permitido</span>
               )}
-              {formatted?.isPolicyResponse && (formatted?.isProibido || formatted?.isPermitido) && ''}
+              {formatted?.showBadge && (formatted?.isProibido || formatted?.isPermitido) && ''}
               <span>{formatted?.content}</span>
               {formatted?.alternative && (
                 <>
