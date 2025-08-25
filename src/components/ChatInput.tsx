@@ -28,21 +28,21 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 border-t bg-background">
-      <div className="flex gap-2 max-w-4xl mx-auto items-center">
+    <form onSubmit={handleSubmit} className="p-4 border-t bg-white border-gray-200">
+      <div className="flex gap-3 items-end">
         <Textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Digite sua pergunta sobre a política de proibidos da Shopee..."
-          className="min-h-[50px] max-h-[120px] resize-none"
+          className="min-h-[50px] max-h-[120px] resize-none flex-1"
           disabled={isLoading}
         />
         <Button 
           type="submit" 
           size="icon"
           disabled={!message.trim() || isLoading}
-          className="h-[50px] w-[50px] flex-shrink-0"
+          className="h-[50px] w-[50px] flex-shrink-0 bg-orange-500 hover:bg-orange-600"
         >
           {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />

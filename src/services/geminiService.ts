@@ -7,24 +7,34 @@ const DEFAULT_MODEL = 'gemini-2.5-flash-lite';
 const FALLBACK_MODEL = 'gemini-2.5-flash';
 const SYSTEM_INSTRUCTION = `Você é um assistente especializado nas políticas de produtos proibidos da Shopee.
 
-Tarefa (em silêncio):
-1) Interpretar e NORMALIZAR o item enviado pelo usuário para a categoria normativa mais específica existente nas políticas (ex.: "muda de samambaia" → "planta viva").
-2) Ler números e unidades (tamanho, volume, peso, capacidade, potência etc.) no item e na política. Quando a política estabelecer limites, compare:
-   - Se o item está ACIMA do limite permitido → classifique como PROIBIDO/RESTRITO conforme a política.
-   - Se o item está IGUAL ou ABAIXO do limite permitido → classifique como PERMITIDO.
-3) Se a política depender de limites numéricos e a pergunta NÃO trouxer medida suficiente para concluir, responda como DEPENDE e explique o limite da política.
-4) Produzir a saída SEM explicações adicionais, apenas no(s) formato(s) abaixo.
+CLASSIFICAÇÕES OBRIGATÓRIAS:
+- PERMITIDO: Item não está nas políticas OU está explicitamente permitido
+- PROIBIDO: Item está explicitamente proibido nas políticas
+- DEPENDE: Item tem limites numéricos nas políticas (tamanho, peso, quantidade, etc.) mas a mensagem não especifica essas medidas
+- RESTRITO: Item requer documentação/autorização especial para venda
 
-Formatos de saída (escolha UM):
-- Caso exista política aplicável e seja conclusivo: "Segundo a política <NÚMERO>.<SEÇÃO>. <TÍTULO COMPLETO>. <É/SÃO> proibido(s)/permitido(s) <CATEGORIA NORMALIZADA/ITEM>." [Opcional] "Alternativa: <ALTERNATIVA PERMITIDA>."
-- Caso dependa de tamanho/medida e a pergunta não informe: "Depende. Segundo a política <NÚMERO>.<SEÇÃO>. <TÍTULO COMPLETO>. É/São proibido(s) acima/depois de <LIMITE COM UNIDADE>; até/igual a <LIMITE COM UNIDADE> é permitido."
-- Caso NÃO exista política aplicável: "Permitido. item não citado nas politicas da Shopee"
+TAREFA:
+1) NORMALIZAR o item para a categoria mais específica das políticas
+2) IDENTIFICAR a política aplicável exata
+3) CLASSIFICAR corretamente conforme as regras acima
+4) RESPONDER apenas nos formatos definidos
 
-Regras:
-- Seja DIRETO, CURTO e OBJETIVO; não inclua justificativas extras, exemplos, notas ou a palavra "Pergunta".
-- Use somente as políticas fornecidas como base. Não invente nada.
-- Não inclua colchetes.
-- Quando houver alternativa clara nas políticas, inclua-a após "Alternativa:".`;
+FORMATOS DE SAÍDA (escolha UM):
+- PERMITIDO: "PERMITIDO. Item não citado nas políticas da Shopee." OU "PERMITIDO. Segundo a política <X.Y>. <TÍTULO>. São permitidos <ITEM/CATEGORIA>."
+- PROIBIDO: "PROIBIDO. Segundo a política <X.Y>. <TÍTULO>. São proibidos <ITEM/CATEGORIA>."
+- DEPENDE: "DEPENDE. Segundo a política <X.Y>. <TÍTULO>. São proibidos acima de <LIMITE>; permitidos até <LIMITE>."
+- RESTRITO: "RESTRITO. Segundo a política <X.Y>. <TÍTULO>. São permitidos <ITEM> mediante apresentação de documentação complementar/somente para vendedores com autorização."
+
+REGRAS ESPECÍFICAS:
+- DEPENDE: Use APENAS quando a política tem limites numéricos (cm, ml, g, etc.) e o usuário não informou medidas
+  * Exemplo: "faca" (sem tamanho) → DEPENDE (política proíbe acima de 30cm)
+  * Exemplo: "tinta spray" (sem peso) → DEPENDE (política proíbe acima de 500g)
+- RESTRITO: Use quando a política menciona "autorização", "documentação complementar", "licença", "vendedores autorizados"
+  * Exemplo: "cerveja", "bebida alcoólica" → RESTRITO (requer documentação)
+  * Exemplo: "airsoft", "luneta" → RESTRITO (requer autorização)
+- PROIBIDO: Use APENAS quando o item é explicitamente proibido SEM condições
+- Seja PRECISO na normalização
+- NUNCA classifique como PROIBIDO se há condições (limites ou autorizações)`;
 
 function createModel(name: string) {
   return genAI.getGenerativeModel({
@@ -55,42 +65,36 @@ export const sendMessageToGemini = async (message: string, politicas: string): P
   try {
     const trimmed = message.trim();
     const itemOriginal = trimmed.replace(/\?+$/,'');
-    const processedMessage = trimmed.endsWith('?') ? trimmed : `${itemOriginal} é proibido?`;
 
-    // Detecta se o usuário informou alguma medida (número + unidade)
-    const hasMeasure = /(\d+[\.,]?\d*)\s*(cm|centimetro|centímetros|centímetro|mm|m|km|pol|polegada|polegadas|ml|l|litro|litros|g|gramas?|kg|quilogramas?|mg|w|kw|v|a|mah|mAh|calibre|cal|oz|onças?)/i.test(itemOriginal);
-    // Detecta itens que costumam depender de tamanho (ex.: facas/facões)
-    const knifeLike = /(faca|facas|facão|facoes|facao|canivete|cutelo)/i.test(itemOriginal);
-
-    const prompt = `POLÍTICAS (base única de verdade):\n${politicas}\n\nInstruções de tarefa:\n- NORMALIZE o item do usuário para a categoria mais específica presente nas políticas.\n- Considere limites numéricos (tamanho/volume/peso/potência etc.) e compare com o item.\n- Se o item estiver acima do limite → PROIBIDO/RESTRITO; se igual/abaixo → PERMITIDO.\n- Caso não haja medida na pergunta para concluir, responda no formato DEPENDE.\n- Responda APENAS no(s) formato(s) definidos nas regras, sem explicações extra.\n\nITEM ORIGINAL: "${itemOriginal}"\nPergunta do usuário: ${processedMessage}`;
-    const decisionGuard = `\n\nSINALIZADORES:\n- HAS_MEASURE: ${hasMeasure ? 'true' : 'false'}\n- KNIFE_LIKE: ${knifeLike ? 'true' : 'false'}\nREGRAS ADICIONAIS:\n- Se HAS_MEASURE = false e a política aplicável possuir LIMITES NUMÉRICOS (ex.: cm, ml, g, W, etc.), responda OBRIGATORIAMENTE no formato "Depende." com o limite exato (acima/do limite é proibido; até/igual é permitido).\n- Se KNIFE_LIKE = true e HAS_MEASURE = false, responda "Depende." usando o limite da política de facas domésticas: é proibido quando a área de corte tenha mais que 30 centímetros (12 polegadas); até/igual a 30 centímetros é permitido (cite a política correspondente).\n- Não conclua como proibido/permitido sem medida quando a política depende de tamanho/medida.`;
+    const prompt = `POLÍTICAS DA SHOPEE:\n${politicas}\n\nITEM PARA ANÁLISE: "${itemOriginal}"\n\nANÁLISE OBRIGATÓRIA:\n1. Encontre a política específica que se aplica ao item\n2. Verifique se há limites numéricos (cm, g, ml, etc.) - se sim e usuário não informou = DEPENDE\n3. Verifique se menciona "autorização", "documentação" - se sim = RESTRITO\n4. Se explicitamente proibido SEM condições = PROIBIDO\n5. Se não está nas políticas = PERMITIDO\n\nEXEMPLOS CRÍTICOS:\n- "faca" (sem tamanho) = DEPENDE (política 8.1.1 proíbe acima 30cm)\n- "cerveja" ou "bebida alcoólica" = RESTRITO (política 2.1 requer documentação)\n- "luneta" = RESTRITO (política 12.1.2 requer autorização)\n\nResponda APENAS no formato especificado.`;
 
     let responseText = '';
     try {
-      responseText = await generateWithModel(DEFAULT_MODEL, prompt + decisionGuard);
+      responseText = await generateWithModel(DEFAULT_MODEL, prompt);
     } catch (e) {
       console.warn('Falha no modelo padrão, tentando fallback...', e);
     }
 
     if (!responseText) {
-      responseText = await generateWithModel(FALLBACK_MODEL, prompt + decisionGuard);
+      responseText = await generateWithModel(FALLBACK_MODEL, prompt);
     }
 
-    // Sanitização
+    // Sanitização e validação da resposta
     if (responseText) {
-      const trimmed = responseText.trim();
-      const lower = trimmed.toLowerCase();
-      const startsWithPermitido = lower.startsWith('permitido.');
-      const startsWithDepende = lower.startsWith('depende.');
-      const idx = lower.indexOf('segundo a política');
-      // Se a resposta não começar com "Permitido." ou "Depende." e contiver o trecho da política, manter apenas a partir dele
-      if (!startsWithPermitido && !startsWithDepende && idx >= 0) {
-        responseText = trimmed.slice(idx);
-      } else {
-        responseText = trimmed;
+      responseText = responseText.trim().replace(/[\[\]]/g, '');
+      
+      // Garantir que a resposta comece com uma das classificações válidas
+      const lower = responseText.toLowerCase();
+      const validStarts = ['permitido.', 'proibido.', 'depende.', 'restrito.'];
+      const hasValidStart = validStarts.some(start => lower.startsWith(start));
+      
+      if (!hasValidStart) {
+        // Se não começar com classificação válida, tentar extrair a partir de "segundo a política"
+        const policyIndex = lower.indexOf('segundo a política');
+        if (policyIndex >= 0) {
+          responseText = responseText.slice(policyIndex);
+        }
       }
-      // Remover colchetes
-      responseText = responseText.replace(/[\[\]]/g, '').trim();
     }
 
     if (!responseText) {
