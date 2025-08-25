@@ -16,10 +16,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
     const isPolicyResponse = lower.includes('segundo a política');
     const startsWithPermitido = lower.startsWith('permitido.');
     const startsWithDepende = lower.startsWith('depende.');
+    const hasRestrictionHint = /restrit|autorização|autorizacao|licen[cç]a|vendedor(?:es)? autorizad|somente para vendedores com autoriza|apenas para vendedores com autoriza|somente para vendedores autorizad|apenas vendedores autorizad|documenta[cç][aã]o\s+complementar|mediante\s+apresenta[cç][aã]o\s+de\s+documenta[cç][aã]o|apresenta[cç][aã]o\s+de\s+documentos|mediante\s+documenta[cç][aã]o|com\s+documenta[cç][aã]o\s+complementar/i.test(lower);
     const lastProib = lower.lastIndexOf('proibid');
     const lastPermit = lower.lastIndexOf('permitid');
 
-    let conclusion: 'proibido' | 'permitido' | 'depende' | null = null;
+    let conclusion: 'proibido' | 'permitido' | 'depende' | 'restrito' | null = null;
     if (startsWithDepende) {
       conclusion = 'depende';
     } else if (startsWithPermitido) {
@@ -27,6 +28,11 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
     } else if (isPolicyResponse) {
       if (lastPermit > lastProib && lastPermit !== -1) conclusion = 'permitido';
       else if (lastProib > lastPermit && lastProib !== -1) conclusion = 'proibido';
+    }
+
+    // Se o texto indicar necessidade de autorização/licença, priorize RESTRITO
+    if (hasRestrictionHint) {
+      conclusion = 'restrito';
     }
 
     const altIndex = message.indexOf('Alternativa:');
@@ -39,6 +45,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
       isProibido: conclusion === 'proibido',
       isPermitido: conclusion === 'permitido',
       isDepende: conclusion === 'depende',
+      isRestrito: conclusion === 'restrito',
       isPolicyResponse,
       showBadge: conclusion !== null,
     };
@@ -70,10 +77,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
               {formatted?.showBadge && formatted?.isDepende && (
                 <span className="font-bold uppercase inline-block rounded px-1.5 py-0.5 bg-amber-100 text-amber-700 mr-1">depende</span>
               )}
-              {formatted?.showBadge && (formatted?.isProibido || formatted?.isPermitido || formatted?.isDepende) && ''}
+              {formatted?.showBadge && formatted?.isRestrito && (
+                <span className="font-bold uppercase inline-block rounded px-1.5 py-0.5 bg-blue-100 text-blue-700 mr-1">restrito</span>
+              )}
+              {formatted?.showBadge && (formatted?.isProibido || formatted?.isPermitido || formatted?.isDepende || formatted?.isRestrito) && ''}
               <span>
                 {(() => {
-                  const regex = /(proibid[oa]s?|permitid[oa]s?)/gi;
+                  const regex = /(proibid[oa]s?|permitid[oa]s?|restrit[oa]s?)/gi;
                   const parts = (formatted?.content ?? '').split(regex);
                   return parts.map((part, idx) => {
                     if (/^proibid/i.test(part)) {
@@ -81,6 +91,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
                     }
                     if (/^permitid/i.test(part)) {
                       return <span key={idx} className="text-green-700 font-semibold">{part}</span>;
+                    }
+                    if (/^restrit/i.test(part)) {
+                      return <span key={idx} className="text-blue-700 font-semibold">{part}</span>;
                     }
                     return <React.Fragment key={idx}>{part}</React.Fragment>;
                   });
