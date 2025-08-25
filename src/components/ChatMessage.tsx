@@ -56,6 +56,34 @@ const getMessageStyle = (message: string) => {
   };
 };
 
+const renderMessageWithLinks = (message: string, isUser: boolean, textColor: string) => {
+  // Detectar links no formato "link: URL"
+  const linkRegex = /link:\s*(https?:\/\/[^\s]+)/gi;
+  const parts = message.split(linkRegex);
+  
+  return parts.map((part, index) => {
+    // Se é um URL (índices ímpares após split)
+    if (index % 2 === 1) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`underline hover:opacity-80 transition-opacity ${
+            isUser ? 'text-blue-100' : 'text-blue-600 hover:text-blue-800'
+          }`}
+        >
+          {part}
+        </a>
+      );
+    }
+    
+    // Texto normal
+    return part;
+  });
+};
+
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp }) => {
   const messageStyle = !isUser ? getMessageStyle(message) : null;
   
@@ -77,11 +105,15 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
               {messageStyle.label}
             </div>
           )}
-          <p className={`text-sm whitespace-pre-wrap ${
+          <div className={`text-sm whitespace-pre-wrap ${
             isUser ? 'text-white' : messageStyle?.textColor || 'text-muted-foreground'
           }`}>
-            {message}
-          </p>
+            {renderMessageWithLinks(
+              message, 
+              isUser, 
+              isUser ? 'text-white' : messageStyle?.textColor || 'text-muted-foreground'
+            )}
+          </div>
           <p className={`text-xs mt-1 opacity-70 ${
             isUser ? 'text-blue-100' : 'text-muted-foreground'
           }`}>

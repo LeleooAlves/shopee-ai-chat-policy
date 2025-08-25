@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import politicasData from '../data/PoliticasShopee.json';
 
 const API_KEY = 'AIzaSyDNm9chlq0QHcFGcCM_2TTxTczqrCC7GFE';
 const genAI = new GoogleGenerativeAI(API_KEY);
@@ -26,15 +27,18 @@ FORMATOS DE SAÍDA (escolha UM):
 - RESTRITO: "RESTRITO. Segundo a política <X.Y>. <TÍTULO>. São permitidos <ITEM> mediante apresentação de documentação complementar/somente para vendedores com autorização."
 
 REGRAS ESPECÍFICAS:
-- DEPENDE: Use APENAS quando a política tem limites numéricos (cm, ml, g, etc.) e o usuário não informou medidas
-  * Exemplo: "faca" (sem tamanho) → DEPENDE (política proíbe acima de 30cm)
-  * Exemplo: "tinta spray" (sem peso) → DEPENDE (política proíbe acima de 500g)
-- RESTRITO: Use quando a política menciona "autorização", "documentação complementar", "licença", "vendedores autorizados"
-  * Exemplo: "cerveja", "bebida alcoólica" → RESTRITO (requer documentação)
-  * Exemplo: "airsoft", "luneta" → RESTRITO (requer autorização)
-- PROIBIDO: Use APENAS quando o item é explicitamente proibido SEM condições
-- Seja PRECISO na normalização
-- NUNCA classifique como PROIBIDO se há condições (limites ou autorizações)`;
+- DEPENDE: Use quando a política tem limites numéricos/percentuais mas o usuário NÃO informou essas medidas
+- PROIBIDO: Use quando o item EXCEDE os limites estabelecidos na política
+- PERMITIDO: Use quando o item está DENTRO dos limites estabelecidos na política
+- RESTRITO: Use quando a política menciona "autorização", "documentação complementar", "licença"
+
+RECONHECIMENTO DE MEDIDAS (todas as variações):
+- Comprimento: cm, centímetro, centímetros, mm, milímetro, milímetros, m, metro, metros, pol, polegada, polegadas
+- Peso: g, grama, gramas, kg, quilo, quilos, quilograma, quilogramas, mg, miligrama, miligramas
+- Volume: ml, mililitro, mililitros, l, litro, litros, cl, centilitro, centilitros
+- Percentual: %, por cento, porcento, percentual, concentração
+- Quantidade: unidades, peças, itens, quantidade
+- Outros: w, watt, watts, v, volt, volts, mah, mAh, calibre, cal`;
 
 function createModel(name: string) {
   return genAI.getGenerativeModel({
@@ -61,12 +65,17 @@ async function generateWithModel(modelName: string, prompt: string): Promise<str
   return text?.trim() ?? '';
 }
 
-export const sendMessageToGemini = async (message: string, politicas: string): Promise<string> => {
+export const sendMessageToGemini = async (message: string): Promise<string> => {
   try {
     const trimmed = message.trim();
     const itemOriginal = trimmed.replace(/\?+$/,'');
 
-    const prompt = `POLÍTICAS DA SHOPEE:\n${politicas}\n\nITEM PARA ANÁLISE: "${itemOriginal}"\n\nANÁLISE OBRIGATÓRIA:\n1. Encontre a política específica que se aplica ao item\n2. Verifique se há limites numéricos (cm, g, ml, etc.) - se sim e usuário não informou = DEPENDE\n3. Verifique se menciona "autorização", "documentação" - se sim = RESTRITO\n4. Se explicitamente proibido SEM condições = PROIBIDO\n5. Se não está nas políticas = PERMITIDO\n\nEXEMPLOS CRÍTICOS:\n- "faca" (sem tamanho) = DEPENDE (política 8.1.1 proíbe acima 30cm)\n- "cerveja" ou "bebida alcoólica" = RESTRITO (política 2.1 requer documentação)\n- "luneta" = RESTRITO (política 12.1.2 requer autorização)\n\nResponda APENAS no formato especificado.`;
+    // Converter JSON para texto formatado
+    const politicasTexto = politicasData.categorias
+      .map(categoria => `${categoria.nome}\n${categoria.conteudo}`)
+      .join('\n\n');
+
+    const prompt = `POLÍTICAS DA SHOPEE:\n${politicasTexto}\n\nITEM PARA ANÁLISE: "${itemOriginal}"\n\nANÁLISE OBRIGATÓRIA:\n1. PRIMEIRO: Extraia TODAS as medidas numéricas do item (números + unidades: %, cm, g, ml, etc.)\n2. Encontre a política específica que se aplica ao item\n3. Compare as medidas extraídas com os limites da política:\n   - Se USUÁRIO INFORMOU medida E está DENTRO do limite = PERMITIDO\n   - Se USUÁRIO INFORMOU medida E EXCEDE o limite = PROIBIDO\n   - Se usuário NÃO informou medida mas política tem limites = DEPENDE\n4. Verifique se menciona "autorização", "documentação" = RESTRITO\n5. Se não está nas políticas = PERMITIDO\n\nREGRA CRÍTICA: SEMPRE verifique se há números no item antes de classificar como DEPENDE!\n\nEXEMPLOS OBRIGATÓRIOS:\n- "faca" (sem tamanho) = DEPENDE (política tem limite de 30cm)\n- "álcool" (sem %) = DEPENDE (política tem limite de 70%)\n- "faca 28cm" = PERMITIDO (28cm < 30cm) ← TEM MEDIDA!\n- "álcool 50%" = PERMITIDO (50% < 70%) ← TEM MEDIDA!\n- "faca 32cm" = PROIBIDO (32cm > 30cm) ← TEM MEDIDA!\n- "álcool 80%" = PROIBIDO (80% > 70%) ← TEM MEDIDA!\n- "cerveja" = RESTRITO (requer documentação)\n\nATENÇÃO ESPECIAL: Se o item contém números (50%, 28cm, etc.), NÃO é DEPENDE!\n\nResponda APENAS no formato especificado.`;
 
     let responseText = '';
     try {
@@ -83,17 +92,30 @@ export const sendMessageToGemini = async (message: string, politicas: string): P
     if (responseText) {
       responseText = responseText.trim().replace(/[\[\]]/g, '');
       
-      // Garantir que a resposta comece com uma das classificações válidas
-      const lower = responseText.toLowerCase();
-      const validStarts = ['permitido.', 'proibido.', 'depende.', 'restrito.'];
-      const hasValidStart = validStarts.some(start => lower.startsWith(start));
+      // Encontrar categoria relevante e adicionar link se existir
+      const itemLower = itemOriginal.toLowerCase();
+      console.log('Procurando categoria para:', itemLower);
       
-      if (!hasValidStart) {
-        // Se não começar com classificação válida, tentar extrair a partir de "segundo a política"
-        const policyIndex = lower.indexOf('segundo a política');
-        if (policyIndex >= 0) {
-          responseText = responseText.slice(policyIndex);
-        }
+      const categoriaRelevante = politicasData.categorias.find(categoria => {
+        const nomeCategoria = categoria.nome.toLowerCase();
+        const conteudoCategoria = categoria.conteudo.toLowerCase();
+        
+        // Verificações mais específicas
+        const nomeMatch = nomeCategoria.includes(itemLower);
+        const conteudoMatch = conteudoCategoria.includes(itemLower);
+        const palavraChave = nomeCategoria.split('.')[1]?.trim().toLowerCase();
+        const palavraMatch = palavraChave && itemLower.includes(palavraChave);
+        
+        console.log(`Categoria: ${categoria.nome}, Nome Match: ${nomeMatch}, Conteúdo Match: ${conteudoMatch}, Palavra Match: ${palavraMatch}`);
+        
+        return nomeMatch || conteudoMatch || palavraMatch;
+      });
+
+      console.log('Categoria encontrada:', categoriaRelevante?.nome, 'Link:', categoriaRelevante?.link);
+
+      if (categoriaRelevante && categoriaRelevante.link) {
+        responseText += `\n\nlink: ${categoriaRelevante.link}`;
+        console.log('Link adicionado à resposta');
       }
     }
 

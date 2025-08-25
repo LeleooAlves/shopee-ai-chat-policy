@@ -4,7 +4,6 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import { sendMessageToGemini } from '@/services/geminiService';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import politicasShopee from '@/data/Politicas Proibidos - Shopee.txt?raw';
 
 interface Message {
   id: string;
@@ -52,7 +51,7 @@ const ChatInterface: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await sendMessageToGemini(messageText, politicasShopee);
+      const response = await sendMessageToGemini(messageText);
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: response,
