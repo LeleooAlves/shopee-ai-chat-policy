@@ -70,7 +70,7 @@ const renderMessageWithLinks = (message: string, isUser: boolean, textColor: str
           href={part}
           target="_blank"
           rel="noopener noreferrer"
-          className={`underline hover:opacity-80 transition-opacity ${
+          className={`underline hover:opacity-80 transition-opacity break-all ${
             isUser ? 'text-blue-100' : 'text-blue-600 hover:text-blue-800'
           }`}
         >
@@ -89,13 +89,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
   
   return (
     <div className={`flex gap-3 p-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div className={`flex gap-3 max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+      <div className={`flex gap-3 w-full max-w-[95%] sm:max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
         <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
           isUser ? 'bg-blue-500' : 'bg-orange-500'
         }`}>
           {isUser ? '👤' : '🤖'}
         </div>
-        <div className={`rounded-lg p-3 ${
+        <div className={`rounded-lg p-3 min-w-0 flex-1 ${
           isUser 
             ? 'bg-blue-500 text-white' 
             : messageStyle?.bgColor || 'bg-muted text-muted-foreground'
@@ -105,7 +105,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
               {messageStyle.label}
             </div>
           )}
-          <div className={`text-sm whitespace-pre-wrap ${
+          <div className={`text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere ${
             isUser ? 'text-white' : messageStyle?.textColor || 'text-muted-foreground'
           }`}>
             {renderMessageWithLinks(

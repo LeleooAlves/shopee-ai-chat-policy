@@ -12,15 +12,41 @@ interface Message {
   timestamp: Date;
 }
 
-const ChatInterface: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
+// Função para carregar mensagens do localStorage
+const loadMessagesFromStorage = (): Message[] => {
+  try {
+    const stored = localStorage.getItem('shopee-chat-messages');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed.map((msg: any) => ({
+        ...msg,
+        timestamp: new Date(msg.timestamp)
+      }));
+    }
+  } catch (error) {
+    console.error('Erro ao carregar mensagens:', error);
+  }
+  return [
     {
       id: '1',
       text: 'Olá! Sou seu assistente para dúvidas sobre a política de produtos proibidos da Shopee. Como posso ajudá-lo hoje?',
       isUser: false,
       timestamp: new Date(),
     },
-  ]);
+  ];
+};
+
+// Função para salvar mensagens no localStorage
+const saveMessagesToStorage = (messages: Message[]) => {
+  try {
+    localStorage.setItem('shopee-chat-messages', JSON.stringify(messages));
+  } catch (error) {
+    console.error('Erro ao salvar mensagens:', error);
+  }
+};
+
+const ChatInterface: React.FC = () => {
+  const [messages, setMessages] = useState<Message[]>(loadMessagesFromStorage);
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -46,8 +72,9 @@ const ChatInterface: React.FC = () => {
       timestamp: new Date(),
     };
 
-    const initialMessage = messages[0];
-    setMessages([initialMessage, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+    saveMessagesToStorage(updatedMessages);
     setIsLoading(true);
 
     try {
@@ -58,15 +85,38 @@ const ChatInterface: React.FC = () => {
         isUser: false,
         timestamp: new Date(),
       };
-      setMessages([initialMessage, userMessage, aiMessage]);
+      const finalMessages = [...updatedMessages, aiMessage];
+      setMessages(finalMessages);
+      saveMessagesToStorage(finalMessages);
     } catch (error) {
       toast.error('Erro ao enviar mensagem. Tente novamente.');
       console.error('Erro:', error);
-      setMessages([initialMessage]);
+      // Em caso de erro, remove apenas a mensagem do usuário que acabou de ser adicionada
+      setMessages(messages);
+      saveMessagesToStorage(messages);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const clearChat = () => {
+    const initialMessage = {
+      id: '1',
+      text: 'Olá! Sou seu assistente para dúvidas sobre a política de produtos proibidos da Shopee. Como posso ajudá-lo hoje?',
+      isUser: false,
+      timestamp: new Date(),
+    };
+    setMessages([initialMessage]);
+    saveMessagesToStorage([initialMessage]);
+  };
+
+  // Expor função de limpar chat globalmente para o botão no header
+  React.useEffect(() => {
+    (window as any).clearShopeeChat = clearChat;
+    return () => {
+      delete (window as any).clearShopeeChat;
+    };
+  }, []);
 
   return (
     <div className="flex flex-col h-full">

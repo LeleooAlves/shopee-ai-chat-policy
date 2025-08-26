@@ -75,7 +75,19 @@ export const sendMessageToGemini = async (message: string): Promise<string> => {
       .map(categoria => `${categoria.nome}\n${categoria.conteudo}`)
       .join('\n\n');
 
-    const prompt = `POLÍTICAS DA SHOPEE:\n${politicasTexto}\n\nITEM PARA ANÁLISE: "${itemOriginal}"\n\nANÁLISE OBRIGATÓRIA:\n1. PRIMEIRO: Extraia TODAS as medidas numéricas do item (números + unidades: %, cm, g, ml, etc.)\n2. Encontre a política específica que se aplica ao item\n3. Compare as medidas extraídas com os limites da política:\n   - Se USUÁRIO INFORMOU medida E está DENTRO do limite = PERMITIDO\n   - Se USUÁRIO INFORMOU medida E EXCEDE o limite = PROIBIDO\n   - Se usuário NÃO informou medida mas política tem limites = DEPENDE\n4. Verifique se menciona "autorização", "documentação" = RESTRITO\n5. Se não está nas políticas = PERMITIDO\n\nREGRA CRÍTICA: SEMPRE verifique se há números no item antes de classificar como DEPENDE!\n\nEXEMPLOS OBRIGATÓRIOS:\n- "faca" (sem tamanho) = DEPENDE (política tem limite de 30cm)\n- "álcool" (sem %) = DEPENDE (política tem limite de 70%)\n- "faca 28cm" = PERMITIDO (28cm < 30cm) ← TEM MEDIDA!\n- "álcool 50%" = PERMITIDO (50% < 70%) ← TEM MEDIDA!\n- "faca 32cm" = PROIBIDO (32cm > 30cm) ← TEM MEDIDA!\n- "álcool 80%" = PROIBIDO (80% > 70%) ← TEM MEDIDA!\n- "cerveja" = RESTRITO (requer documentação)\n\nATENÇÃO ESPECIAL: Se o item contém números (50%, 28cm, etc.), NÃO é DEPENDE!\n\nResponda APENAS no formato especificado.`;
+    const prompt = `POLÍTICAS DA SHOPEE:\n${politicasTexto}\n\nITEM PARA ANÁLISE: "${itemOriginal}"\n\nANÁLISE OBRIGATÓRIA:
+1. PRIMEIRO: Verifique se o item requer documentação/autorização = RESTRITO
+   - Palavras-chave: "autorização", "documentação", "apresentação de documentação", "documentação complementar", "mediante apresentação"
+2. SEGUNDO: Extraia TODAS as medidas numéricas do item (números + unidades: %, cm, g, ml, etc.)
+3. Encontre a política específica que se aplica ao item
+4. Compare as medidas extraídas com os limites da política:
+   - Se USUÁRIO INFORMOU medida E está DENTRO do limite = PERMITIDO
+   - Se USUÁRIO INFORMOU medida E EXCEDE o limite = PROIBIDO
+   - Se usuário NÃO informou medida mas política tem limites = DEPENDE
+5. Se não está nas políticas = PERMITIDO
+
+PRIORIDADE ABSOLUTA: RESTRITO > PROIBIDO > PERMITIDO > DEPENDE\n\nREGRA CRÍTICA: SEMPRE verifique se há números no item antes de classificar como DEPENDE!\n\nEXEMPLOS OBRIGATÓRIOS:\n- "faca" (sem tamanho) = DEPENDE (política tem limite de 30cm)\n- "álcool" (sem %) = DEPENDE (política tem limite de 70%)\n- "faca 28cm" = PERMITIDO (28cm < 30cm) ← TEM MEDIDA!\n- "álcool 50%" = PERMITIDO (50% < 70%) ← TEM MEDIDA!\n- "faca 32cm" = PROIBIDO (32cm > 30cm) ← TEM MEDIDA!\n- "álcool 80%" = PROIBIDO (80% > 70%) ← TEM MEDIDA!\n- "cerveja" = RESTRITO (requer documentação)
+- "suplemento alimentar" = RESTRITO (requer apresentação de documentação)\n\nATENÇÃO ESPECIAL: Se o item contém números (50%, 28cm, etc.), NÃO é DEPENDE!\n\nResponda APENAS no formato especificado.`;
 
     let responseText = '';
     try {
