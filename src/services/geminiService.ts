@@ -78,16 +78,31 @@ export const sendMessageToGemini = async (message: string): Promise<string> => {
     const prompt = `POLÍTICAS DA SHOPEE:\n${politicasTexto}\n\nITEM PARA ANÁLISE: "${itemOriginal}"\n\nANÁLISE OBRIGATÓRIA:
 1. PRIMEIRO: Verifique se o item requer documentação/autorização = RESTRITO
    - Palavras-chave: "autorização", "documentação", "apresentação de documentação", "documentação complementar", "mediante apresentação"
-2. SEGUNDO: Extraia TODAS as medidas numéricas do item (números + unidades: %, cm, g, ml, etc.)
-3. Encontre a política específica que se aplica ao item
-4. Compare as medidas extraídas com os limites da política:
+2. SEGUNDO: Identifique o contexto e função do item:
+   - Ferramentas de trabalho (pistola de pintura, furadeira, etc.) são diferentes de armas
+   - Equipamentos esportivos são diferentes de armas reais
+   - Considere o uso principal e finalidade do produto
+3. TERCEIRO: Extraia TODAS as medidas numéricas do item (números + unidades: %, cm, g, ml, etc.)
+4. Encontre a política específica que se aplica ao item baseada no contexto real
+5. Compare as medidas extraídas com os limites da política:
    - Se USUÁRIO INFORMOU medida E está DENTRO do limite = PERMITIDO
    - Se USUÁRIO INFORMOU medida E EXCEDE o limite = PROIBIDO
    - Se usuário NÃO informou medida mas política tem limites = DEPENDE
-5. Se não está nas políticas = PERMITIDO
+6. Se não está nas políticas = PERMITIDO
+
+REGRA CRÍTICA DE CONTEXTO: 
+- "Pistola de pintura" = FERRAMENTA para pintura, NÃO é arma
+- "Maçarico" = ferramenta inflamável (proibida na categoria 8.3.1)
+- Analise a FUNÇÃO REAL do produto, não apenas palavras similares
 
 PRIORIDADE ABSOLUTA: RESTRITO > PROIBIDO > PERMITIDO > DEPENDE\n\nREGRA CRÍTICA: SEMPRE verifique se há números no item antes de classificar como DEPENDE!\n\nEXEMPLOS OBRIGATÓRIOS:\n- "faca" (sem tamanho) = DEPENDE (política tem limite de 30cm)\n- "álcool" (sem %) = DEPENDE (política tem limite de 70%)\n- "faca 28cm" = PERMITIDO (28cm < 30cm) ← TEM MEDIDA!\n- "álcool 50%" = PERMITIDO (50% < 70%) ← TEM MEDIDA!\n- "faca 32cm" = PROIBIDO (32cm > 30cm) ← TEM MEDIDA!\n- "álcool 80%" = PROIBIDO (80% > 70%) ← TEM MEDIDA!\n- "cerveja" = RESTRITO (requer documentação)
-- "suplemento alimentar" = RESTRITO (requer apresentação de documentação)\n\nATENÇÃO ESPECIAL: Se o item contém números (50%, 28cm, etc.), NÃO é DEPENDE!\n\nResponda APENAS no formato especificado.`;
+- "suplemento alimentar" = RESTRITO (requer apresentação de documentação)
+- "pistola de pintura" = PERMITIDO (ferramenta de trabalho, não é arma)
+- "maçarico" = PROIBIDO (ferramenta inflamável proibida)
+
+ATENÇÃO ESPECIAL: Se o item contém números (50%, 28cm, etc.), NÃO é DEPENDE!
+
+Responda APENAS no formato especificado.`;
 
     let responseText = '';
     try {
