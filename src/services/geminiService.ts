@@ -75,24 +75,30 @@ export const sendMessageToGemini = async (message: string): Promise<string> => {
       .map(categoria => `${categoria.nome}\n${categoria.conteudo}`)
       .join('\n\n');
 
-    const prompt = `POLÍTICAS DA SHOPEE:\n${politicasTexto}\n\nITEM PARA ANÁLISE: "${itemOriginal}"\n\nANÁLISE OBRIGATÓRIA:
-1. PRIMEIRO: Verifique se o item requer documentação/autorização = RESTRITO
+    const prompt = `POLÍTICAS DA SHOPEE:\n${politicasTexto}\n\nITEM PARA ANÁLISE: "${itemOriginal}"\n\nPRIMEIRO: CONSULTE SEU CONHECIMENTO INTERNO sobre o item "${itemOriginal}":\n- O que é este produto?\n- Qual sua função principal?\n- Em que categoria se encaixa?\n- Quais são suas características técnicas?\n- Como é usado normalmente?\n\nANÁLISE OBRIGATÓRIA:
+1. Com base no seu conhecimento interno, determine a NATUREZA REAL do produto
+2. Verifique se o item requer documentação/autorização = RESTRITO
    - Palavras-chave: "autorização", "documentação", "apresentação de documentação", "documentação complementar", "mediante apresentação"
-2. SEGUNDO: Identifique o contexto e função do item:
+3. Use seu conhecimento para identificar o contexto correto:
    - Ferramentas de trabalho (pistola de pintura, furadeira, etc.) são diferentes de armas
    - Equipamentos esportivos são diferentes de armas reais
-   - Considere o uso principal e finalidade do produto
-3. TERCEIRO: Extraia TODAS as medidas numéricas do item (números + unidades: %, cm, g, ml, etc.)
-4. Encontre a política específica que se aplica ao item baseada no contexto real
-5. Compare as medidas extraídas com os limites da política:
+   - Produtos domésticos vs. produtos industriais
+   - Brinquedos vs. produtos reais
+   - Considere o uso principal e finalidade baseado no seu conhecimento
+4. Extraia TODAS as medidas numéricas do item (números + unidades: %, cm, g, ml, etc.)
+5. Encontre a política específica que se aplica ao item baseada no contexto real identificado
+6. Compare as medidas extraídas com os limites da política:
    - Se USUÁRIO INFORMOU medida E está DENTRO do limite = PERMITIDO
    - Se USUÁRIO INFORMOU medida E EXCEDE o limite = PROIBIDO
    - Se usuário NÃO informou medida mas política tem limites = DEPENDE
-6. Se não está nas políticas = PERMITIDO
+7. Se não está nas políticas = PERMITIDO
 
 REGRA CRÍTICA DE CONTEXTO: 
+- USE SEU CONHECIMENTO INTERNO para entender o produto antes de aplicar políticas
 - "Pistola de pintura" = FERRAMENTA para pintura, NÃO é arma
 - "Maçarico" = ferramenta inflamável (proibida na categoria 8.3.1)
+- "Estilingue de brinquedo" vs "Estilingue real" = contextos diferentes
+- "Faca de cozinha" vs "Faca de combate" = finalidades diferentes
 - Analise a FUNÇÃO REAL do produto, não apenas palavras similares
 
 PRIORIDADE ABSOLUTA: RESTRITO > PROIBIDO > PERMITIDO > DEPENDE\n\nREGRA CRÍTICA: SEMPRE verifique se há números no item antes de classificar como DEPENDE!\n\nEXEMPLOS OBRIGATÓRIOS:\n- "faca" (sem tamanho) = DEPENDE (política tem limite de 30cm)\n- "álcool" (sem %) = DEPENDE (política tem limite de 70%)\n- "faca 28cm" = PERMITIDO (28cm < 30cm) ← TEM MEDIDA!\n- "álcool 50%" = PERMITIDO (50% < 70%) ← TEM MEDIDA!\n- "faca 32cm" = PROIBIDO (32cm > 30cm) ← TEM MEDIDA!\n- "álcool 80%" = PROIBIDO (80% > 70%) ← TEM MEDIDA!\n- "cerveja" = RESTRITO (requer documentação)
