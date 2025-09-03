@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
@@ -95,6 +95,11 @@ app.post('/api/update-policy-link', async (req, res) => {
     console.error('Error updating policy link:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Rota de health check para Railway
+app.get('/', (req, res) => {
+  res.json({ status: 'API Server is running', timestamp: new Date().toISOString() });
 });
 
 app.listen(PORT, () => {
