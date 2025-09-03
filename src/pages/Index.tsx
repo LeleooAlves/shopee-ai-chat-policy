@@ -1,9 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Shield } from 'lucide-react';
 import ChatInterface from '@/components/ChatInterface';
 import ClearChatButton from '@/components/ClearChatButton';
+import RefreshButton from '@/components/RefreshButton';
+import UpdateNotificationModal from '@/components/UpdateNotificationModal';
 
 const Index = () => {
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+
+  useEffect(() => {
+    // Verificar se é uma nova sessão (aba foi fechada e reaberta)
+    const sessionKey = 'shopee-session-active';
+    const wasSessionActive = sessionStorage.getItem(sessionKey);
+    
+    if (!wasSessionActive) {
+      // Nova sessão - mostrar modal
+      setShowUpdateModal(true);
+      sessionStorage.setItem(sessionKey, 'true');
+    }
+
+    // Limpar sessionStorage quando a aba for fechada
+    const handleBeforeUnload = () => {
+      sessionStorage.removeItem(sessionKey);
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
+
   return (
     <div className="h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex flex-col">
       {/* Header */}
@@ -19,12 +46,18 @@ const Index = () => {
                 />
                 <span className="text-orange-600 font-semibold text-lg"></span>
               </div>
-              <div className="flex items-center gap-2 text-gray-600">
+              <button 
+                onClick={() => window.open('https://help.shopee.com.br/portal/4/article/76226-%5BPol%C3%ADticas%5D-Pol%C3%ADtica-de-Produtos-Proibidos-e-Restritos', '_blank')}
+                className="flex items-center gap-2 text-gray-600 hover:text-orange-600 transition-colors duration-200 hover:bg-orange-50 px-2 py-1 rounded-md"
+              >
                 <Shield className="w-4 h-4" />
                 <span className="font-medium">Política de Proibidos</span>
-              </div>
+              </button>
             </div>
-            <ClearChatButton onClearChat={() => (window as any).clearShopeeChat?.()} />
+            <div className="flex items-center gap-2">
+              <RefreshButton />
+              <ClearChatButton onClearChat={() => (window as any).clearShopeeChat?.()} />
+            </div>
           </div>
         </div>
       </header>
@@ -33,6 +66,12 @@ const Index = () => {
       <main className="flex-1 flex flex-col overflow-hidden">
         <ChatInterface />
       </main>
+
+      {/* Update Notification Modal */}
+      <UpdateNotificationModal 
+        isOpen={showUpdateModal}
+        onClose={() => setShowUpdateModal(false)}
+      />
     </div>
   );
 };

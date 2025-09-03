@@ -1,11 +1,13 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import politicasData from '../data/PoliticasShopee.json';
 
+// Cache das políticas para melhor performance
+let politicasCache: string | null = null;
+
 const API_KEY = 'AIzaSyDNm9chlq0QHcFGcCM_2TTxTczqrCC7GFE';
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-const DEFAULT_MODEL = 'gemini-2.5-flash-lite';
-const FALLBACK_MODEL = 'gemini-2.5-flash';
+const MODEL = 'gemini-2.5-flash';
 const SYSTEM_INSTRUCTION = `Você é um assistente especializado nas políticas de produtos proibidos da Shopee.
 
 CLASSIFICAÇÕES OBRIGATÓRIAS:
@@ -14,11 +16,19 @@ CLASSIFICAÇÕES OBRIGATÓRIAS:
 - DEPENDE: Item tem limites numéricos nas políticas (tamanho, peso, quantidade, etc.) mas a mensagem não especifica essas medidas
 - RESTRITO: Item requer documentação/autorização especial para venda
 
-TAREFA:
-1) NORMALIZAR o item para a categoria mais específica das políticas
-2) IDENTIFICAR a política aplicável exata
-3) CLASSIFICAR corretamente conforme as regras acima
-4) RESPONDER apenas nos formatos definidos
+TAREFA PRINCIPAL:
+1) ANALISAR o item usando seu conhecimento interno sobre o produto
+2) IDENTIFICAR a categoria MAIS ESPECÍFICA que se aplica ao item
+3) PRIORIZAR categorias específicas sobre categorias gerais
+4) CLASSIFICAR corretamente conforme as regras acima
+5) RESPONDER apenas nos formatos definidos
+
+REGRAS DE CATEGORIZAÇÃO:
+- Para "câmera escondida" → buscar "7. CÂMERAS E DRONES" antes de "4.1.1. GRAVADORES DE VOZ"
+- Para "faca de cozinha" → buscar "8.2. UTENSÍLIOS DOMÉSTICOS" antes de "3. ARMAS"
+- Para "pistola de pintura" → buscar "8.3. FERRAMENTAS" antes de "3. ARMAS"
+- SEMPRE priorize a função PRINCIPAL do produto
+- Use contexto do produto para determinar categoria correta
 
 FORMATOS DE SAÍDA (escolha UM):
 - PERMITIDO: "PERMITIDO. Item não citado nas políticas da Shopee." OU "PERMITIDO. Segundo a política <X.Y>. <TÍTULO>. São permitidos <ITEM/CATEGORIA>."
@@ -70,28 +80,33 @@ export const sendMessageToGemini = async (message: string): Promise<string> => {
     const trimmed = message.trim();
     const itemOriginal = trimmed.replace(/\?+$/,'');
 
-    // Converter JSON para texto formatado
-    const politicasTexto = politicasData.categorias
-      .map(categoria => `${categoria.nome}\n${categoria.conteudo}`)
-      .join('\n\n');
+    // Usar cache das políticas para melhor performance
+    if (!politicasCache) {
+      politicasCache = politicasData.categorias
+        .map(categoria => `${categoria.nome}\n${categoria.conteudo}`)
+        .join('\n\n');
+    }
+    const politicasTexto = politicasCache;
 
-    const prompt = `POLÍTICAS DA SHOPEE:\n${politicasTexto}\n\nITEM PARA ANÁLISE: "${itemOriginal}"\n\nPRIMEIRO: CONSULTE SEU CONHECIMENTO INTERNO sobre o item "${itemOriginal}":\n- O que é este produto?\n- Qual sua função principal?\n- Em que categoria se encaixa?\n- Quais são suas características técnicas?\n- Como é usado normalmente?\n\nANÁLISE OBRIGATÓRIA:
+    const prompt = `POLÍTICAS DA SHOPEE:\n${politicasTexto}\n\nITEM PARA ANÁLISE: "${itemOriginal}"\n\nPRIMEIRO: CONSULTE SEU CONHECIMENTO INTERNO sobre o item "${itemOriginal}":\n- O que é este produto?\n- Qual sua função principal?\n- Em que categoria se encaixa?\n- Quais são suas características técnicas?\n- Como é usado normalmente?\n\nANÁLISE OBRIGATÓRIA - PRIORIZAÇÃO DE CATEGORIAS:
 1. Com base no seu conhecimento interno, determine a NATUREZA REAL do produto
-2. Verifique se o item requer documentação/autorização = RESTRITO
+2. IDENTIFIQUE TODAS as categorias possíveis que poderiam se aplicar
+3. PRIORIZE a categoria MAIS ESPECÍFICA baseada na função PRINCIPAL:
+   - "câmera escondida na caneta" = CÂMERA (categoria 7), não gravador (categoria 4.1.1)
+   - "faca de cozinha" = UTENSÍLIO DOMÉSTICO (categoria 8.2), não arma (categoria 3)
+   - "pistola de pintura" = FERRAMENTA (categoria 8.3), não arma (categoria 3)
+4. Verifique se o item requer documentação/autorização = RESTRITO
    - Palavras-chave: "autorização", "documentação", "apresentação de documentação", "documentação complementar", "mediante apresentação"
-3. Use seu conhecimento para identificar o contexto correto:
-   - Ferramentas de trabalho (pistola de pintura, furadeira, etc.) são diferentes de armas
-   - Equipamentos esportivos são diferentes de armas reais
-   - Produtos domésticos vs. produtos industriais
-   - Brinquedos vs. produtos reais
-   - Considere o uso principal e finalidade baseado no seu conhecimento
-4. Extraia TODAS as medidas numéricas do item (números + unidades: %, cm, g, ml, etc.)
-5. Encontre a política específica que se aplica ao item baseada no contexto real identificado
-6. Compare as medidas extraídas com os limites da política:
+5. Use contexto específico para determinar categoria correta:
+   - Considere o uso PRINCIPAL e finalidade baseado no seu conhecimento
+   - Evite categorias genéricas quando existe categoria específica
+6. Extraia TODAS as medidas numéricas do item (números + unidades: %, cm, g, ml, etc.)
+7. Encontre a política MAIS ESPECÍFICA que se aplica ao item
+8. Compare as medidas extraídas com os limites da política:
    - Se USUÁRIO INFORMOU medida E está DENTRO do limite = PERMITIDO
    - Se USUÁRIO INFORMOU medida E EXCEDE o limite = PROIBIDO
    - Se usuário NÃO informou medida mas política tem limites = DEPENDE
-7. Se não está nas políticas = PERMITIDO
+9. Se não está nas políticas = PERMITIDO
 
 REGRA CRÍTICA DE CONTEXTO: 
 - USE SEU CONHECIMENTO INTERNO para entender o produto antes de aplicar políticas
@@ -105,50 +120,53 @@ PRIORIDADE ABSOLUTA: RESTRITO > PROIBIDO > PERMITIDO > DEPENDE\n\nREGRA CRÍTICA
 - "suplemento alimentar" = RESTRITO (requer apresentação de documentação)
 - "pistola de pintura" = PERMITIDO (ferramenta de trabalho, não é arma)
 - "maçarico" = PROIBIDO (ferramenta inflamável proibida)
+- "câmera escondida na caneta" = PROIBIDO (categoria 7. CÂMERAS E DRONES, não 4.1.1. GRAVADORES)
 
 ATENÇÃO ESPECIAL: Se o item contém números (50%, 28cm, etc.), NÃO é DEPENDE!
 
-Responda APENAS no formato especificado.`;
+EXEMPLOS DE PRIORIZAÇÃO CORRETA:
+- "câmera escondida" → categoria 7. CÂMERAS E DRONES (função principal: câmera)
+- "caneta com câmera" → categoria 7. CÂMERAS E DRONES (função principal: câmera)
+- "gravador de voz" → categoria 4.1.1. GRAVADORES DE VOZ (função principal: gravação)
 
-    let responseText = '';
-    try {
-      responseText = await generateWithModel(DEFAULT_MODEL, prompt);
-    } catch (e) {
-      console.warn('Falha no modelo padrão, tentando fallback...', e);
-    }
+Responda OBRIGATORIAMENTE no formato:
+[CLASSIFICAÇÃO]: [Explicação da análise]
 
-    if (!responseText) {
-      responseText = await generateWithModel(FALLBACK_MODEL, prompt);
-    }
+Onde CLASSIFICAÇÃO deve ser exatamente uma das opções: PERMITIDO, PROIBIDO, DEPENDE, RESTRITO`;
+
+    const responseText = await generateWithModel(MODEL, prompt);
 
     // Sanitização e validação da resposta
     if (responseText) {
-      responseText = responseText.trim().replace(/[\[\]]/g, '');
+      const sanitizedResponse = responseText.trim().replace(/[\[\]]/g, '');
       
-      // Encontrar categoria relevante e adicionar link se existir
-      const itemLower = itemOriginal.toLowerCase();
-      console.log('Procurando categoria para:', itemLower);
+      // Extrair categoria específica da resposta da IA
+      const categoriaMatch = sanitizedResponse.match(/política\s+(\d+(?:\.\d+)*\.?\s*[A-ZÁÊÇÕ\s]+)/i);
+      let categoriaRelevante = null;
       
-      const categoriaRelevante = politicasData.categorias.find(categoria => {
-        const nomeCategoria = categoria.nome.toLowerCase();
-        const conteudoCategoria = categoria.conteudo.toLowerCase();
+      if (categoriaMatch) {
+        const categoriaNome = categoriaMatch[1].trim().replace(/\.$/, '');
+        console.log('Categoria extraída da resposta:', categoriaNome);
         
-        // Verificações mais específicas
-        const nomeMatch = nomeCategoria.includes(itemLower);
-        const conteudoMatch = conteudoCategoria.includes(itemLower);
-        const palavraChave = nomeCategoria.split('.')[1]?.trim().toLowerCase();
-        const palavraMatch = palavraChave && itemLower.includes(palavraChave);
+        // Buscar categoria exata pelo nome
+        categoriaRelevante = politicasData.categorias.find(categoria => {
+          const nomeCategoria = categoria.nome.trim();
+          return nomeCategoria === categoriaNome || nomeCategoria.includes(categoriaNome);
+        });
         
-        console.log(`Categoria: ${categoria.nome}, Nome Match: ${nomeMatch}, Conteúdo Match: ${conteudoMatch}, Palavra Match: ${palavraMatch}`);
-        
-        return nomeMatch || conteudoMatch || palavraMatch;
-      });
+        console.log('Categoria encontrada:', categoriaRelevante?.nome);
+      }
 
       console.log('Categoria encontrada:', categoriaRelevante?.nome, 'Link:', categoriaRelevante?.link);
 
-      if (categoriaRelevante && categoriaRelevante.link) {
-        responseText += `\n\nlink: ${categoriaRelevante.link}`;
-        console.log('Link adicionado à resposta');
+      if (categoriaRelevante) {
+        if (categoriaRelevante.link) {
+          return sanitizedResponse + `\n\n${categoriaRelevante.link}`;
+        } else {
+          return sanitizedResponse + `\n\nlink da categoria não encontrado`;
+        }
+      } else {
+        return sanitizedResponse + `\n\nlink da categoria não encontrado`;
       }
     }
 
