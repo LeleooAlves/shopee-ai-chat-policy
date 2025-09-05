@@ -1,12 +1,17 @@
-import React, { useEffect } from 'react';
-import { Shield } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Shield, MessageCircle, Trophy, BarChart3, Menu, X } from 'lucide-react';
 import ChatInterface from '@/components/ChatInterface';
 import ClearChatButton from '@/components/ClearChatButton';
 import RefreshButton from '@/components/RefreshButton';
 import ThemeToggle from '@/components/ThemeToggle';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
+import QuizMode from '@/components/QuizMode';
+import StatsMode from '@/components/StatsMode';
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState<'stats' | 'chat' | 'quiz'>('chat');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   useEffect(() => {
     // Limpar sessionStorage quando a aba for fechada para detecção de nova sessão
     const handleBeforeUnload = () => {
@@ -24,41 +29,132 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="h-screen bg-gradient-to-br from-orange-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 flex flex-col">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 flex-shrink-0">
-        <div className="px-4 py-3 sm:px-6">
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-3">
+    <div className="h-screen bg-gradient-to-br from-orange-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 flex">
+      {/* Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <div className="flex flex-col h-full">
+          {/* Sidebar Header */}
+          <div className="p-4 border-b dark:border-gray-700">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <img 
-                  src="/shopeelogo.jpg" 
-                  alt="Shopee Logo" 
-                  className="w-8 h-8 rounded-lg object-contain"
-                />
-                <span className="text-orange-600 font-semibold text-lg"></span>
+              
+                <span className="font-semibold text-gray-900 dark:text-gray-100">Shopee Proibido</span>
               </div>
-              <button 
-                onClick={() => window.open('https://help.shopee.com.br/portal/4/article/76226-%5BPol%C3%ADticas%5D-Pol%C3%ADtica-de-Produtos-Proibidos-e-Restritos', '_blank')}
-                className="flex items-center gap-2 text-gray-600 hover:text-orange-600 transition-colors duration-200 hover:bg-orange-50 px-2 py-1 rounded-md"
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
               >
-                <Shield className="w-4 h-4" />
-                <span className="font-medium">Política de Proibidos</span>
+                <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
               </button>
             </div>
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <RefreshButton />
-              <ClearChatButton onClearChat={() => (window as any).clearShopeeChat?.()} />
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 p-4">
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  setActiveTab('stats');
+                  setSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors duration-200 ${
+                  activeTab === 'stats'
+                    ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <BarChart3 className="w-5 h-5" />
+                <span className="font-medium">Estatísticas</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab('chat');
+                  setSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors duration-200 ${
+                  activeTab === 'chat'
+                    ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span className="font-medium">Chat IA</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab('quiz');
+                  setSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors duration-200 ${
+                  activeTab === 'quiz'
+                    ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <Trophy className="w-5 h-5" />
+                <span className="font-medium">Quiz</span>
+              </button>
+            </div>
+          </nav>
+        </div>
+      </div>
+
+      {/* Overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 flex-shrink-0">
+          <div className="px-4 py-3 sm:px-6">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                >
+                  {sidebarOpen ? (
+                    <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  ) : (
+                    <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  )}
+                </button>
+                
+                <button 
+                  onClick={() => window.open('https://help.shopee.com.br/portal/4/article/76226-%5BPol%C3%ADticas%5D-Pol%C3%ADtica-de-Produtos-Proibidos-e-Restritos', '_blank')}
+                  className="flex items-center gap-2 text-gray-600 hover:text-orange-600 transition-all duration-200 hover:bg-orange-50 dark:hover:bg-orange-900/20 px-3 py-2 rounded-lg border border-transparent hover:border-orange-200 dark:hover:border-orange-700 hover:shadow-sm"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span className="font-medium hidden sm:inline">Política de Proibidos</span>
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <RefreshButton />
+                {activeTab === 'chat' && (
+                  <ClearChatButton onClearChat={() => (window as any).clearShopeeChat?.()} />
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Chat Container */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <ChatInterface />
-      </main>
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {activeTab === 'stats' && <StatsMode />}
+          {activeTab === 'chat' && <ChatInterface />}
+          {activeTab === 'quiz' && <QuizMode />}
+        </main>
+      </div>
 
       {/* PWA Install Prompt */}
       <PWAInstallPrompt />

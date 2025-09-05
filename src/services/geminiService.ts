@@ -170,14 +170,10 @@ Onde CLASSIFICAÇÃO deve ser exatamente uma das opções: PERMITIDO, PROIBIDO, 
           });
         }
 
-        if (categoriaRelevante) {
-          if (categoriaRelevante.link) {
-            finalResponse = sanitizedResponse + `\n\n${categoriaRelevante.link}`;
-          } else {
-            finalResponse = sanitizedResponse + `\n\nlink da categoria não encontrado`;
-          }
+        if (categoriaRelevante && categoriaRelevante.link) {
+          finalResponse = sanitizedResponse + `\n\n${categoriaRelevante.link}`;
         } else {
-          finalResponse = sanitizedResponse + `\n\nlink da categoria não encontrado`;
+          finalResponse = sanitizedResponse;
         }
       }
 
@@ -279,14 +275,10 @@ Onde CLASSIFICAÇÃO deve ser exatamente uma das opções: PERMITIDO, PROIBIDO, 
 
       console.log('Categoria encontrada:', categoriaRelevante?.nome, 'Link:', categoriaRelevante?.link);
 
-      if (categoriaRelevante) {
-        if (categoriaRelevante.link) {
-          return sanitizedResponse + `\n\n${categoriaRelevante.link}`;
-        } else {
-          return sanitizedResponse + `\n\nlink da categoria não encontrado`;
-        }
+      if (categoriaRelevante && categoriaRelevante.link) {
+        return sanitizedResponse + `\n\n${categoriaRelevante.link}`;
       } else {
-        return sanitizedResponse + `\n\nlink da categoria não encontrado`;
+        return sanitizedResponse;
       }
     }
 
