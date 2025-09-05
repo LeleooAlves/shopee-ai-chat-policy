@@ -3,6 +3,8 @@ import { Shield } from 'lucide-react';
 import ChatInterface from '@/components/ChatInterface';
 import ClearChatButton from '@/components/ClearChatButton';
 import RefreshButton from '@/components/RefreshButton';
+import ThemeToggle from '@/components/ThemeToggle';
+import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 
 const Index = () => {
   useEffect(() => {
@@ -22,9 +24,9 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="h-screen bg-gradient-to-br from-orange-50 to-orange-100 flex flex-col">
+    <div className="h-screen bg-gradient-to-br from-orange-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 flex flex-col">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b flex-shrink-0">
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 flex-shrink-0">
         <div className="px-4 py-3 sm:px-6">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-3">
@@ -45,6 +47,7 @@ const Index = () => {
               </button>
             </div>
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               <RefreshButton />
               <ClearChatButton onClearChat={() => (window as any).clearShopeeChat?.()} />
             </div>
@@ -57,6 +60,8 @@ const Index = () => {
         <ChatInterface />
       </main>
 
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
     </div>
   );
 };

@@ -15,8 +15,8 @@ const getMessageStyle = (message: string) => {
   
   if (lowerMessage.startsWith('permitido.')) {
     return {
-      bgColor: 'bg-green-100 border-l-4 border-green-500',
-      textColor: 'text-green-800',
+      bgColor: 'bg-green-100 dark:bg-green-900/30 border-l-4 border-green-500',
+      textColor: 'text-green-800 dark:text-green-200',
       label: 'PERMITIDO',
       labelColor: 'bg-green-500 text-white'
     };
@@ -24,8 +24,8 @@ const getMessageStyle = (message: string) => {
   
   if (lowerMessage.startsWith('proibido.')) {
     return {
-      bgColor: 'bg-red-100 border-l-4 border-red-500',
-      textColor: 'text-red-800',
+      bgColor: 'bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500',
+      textColor: 'text-red-800 dark:text-red-200',
       label: 'PROIBIDO',
       labelColor: 'bg-red-500 text-white'
     };
@@ -33,8 +33,8 @@ const getMessageStyle = (message: string) => {
   
   if (lowerMessage.startsWith('depende.')) {
     return {
-      bgColor: 'bg-yellow-100 border-l-4 border-yellow-500',
-      textColor: 'text-yellow-800',
+      bgColor: 'bg-yellow-100 dark:bg-yellow-900/30 border-l-4 border-yellow-500',
+      textColor: 'text-yellow-800 dark:text-yellow-200',
       label: 'DEPENDE',
       labelColor: 'bg-yellow-500 text-white'
     };
@@ -42,16 +42,16 @@ const getMessageStyle = (message: string) => {
   
   if (lowerMessage.startsWith('restrito.')) {
     return {
-      bgColor: 'bg-orange-100 border-l-4 border-orange-500',
-      textColor: 'text-orange-800',
+      bgColor: 'bg-orange-100 dark:bg-orange-900/30 border-l-4 border-orange-500',
+      textColor: 'text-orange-800 dark:text-orange-200',
       label: 'RESTRITO',
       labelColor: 'bg-orange-500 text-white'
     };
   }
   
   return {
-    bgColor: 'bg-muted',
-    textColor: 'text-muted-foreground',
+    bgColor: 'bg-gray-100 dark:bg-gray-800',
+    textColor: 'text-gray-800 dark:text-gray-200',
     label: null,
     labelColor: ''
   };
@@ -135,14 +135,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
       <div className={`flex gap-3 p-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
         <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} ${isUser ? 'max-w-[85%]' : 'max-w-[85%]'}`}>
           <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
-            isUser ? 'bg-blue-500' : 'bg-orange-500'
+            isUser ? 'bg-blue-500 dark:bg-blue-600' : 'bg-orange-500 dark:bg-orange-600'
           }`}>
             {isUser ? '👤' : '🤖'}
           </div>
           <div className={`rounded-lg p-3 inline-block max-w-fit ${
             isUser 
-              ? 'bg-blue-500 text-white' 
-              : messageStyle?.bgColor || 'bg-muted text-muted-foreground'
+              ? 'bg-blue-500 dark:bg-blue-600 text-white' 
+              : messageStyle?.bgColor || 'bg-gray-100 dark:bg-gray-800'
           }`}>
             {messageStyle?.label && (
               <div className={`inline-block px-2 py-1 rounded text-xs font-bold mb-2 ${messageStyle.labelColor}`}>
@@ -150,7 +150,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
               </div>
             )}
             <div className={`text-sm whitespace-pre-wrap break-words overflow-wrap-anywhere ${
-              isUser ? 'text-white' : messageStyle?.textColor || 'text-muted-foreground'
+              isUser ? 'text-white' : messageStyle?.textColor || 'text-gray-800 dark:text-gray-200'
             }`}>
               {renderMessageWithLinks(
                 message, 
@@ -159,7 +159,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
               )}
             </div>
             <p className={`text-xs mt-1 opacity-70 ${
-              isUser ? 'text-blue-100' : 'text-muted-foreground'
+              isUser ? 'text-blue-100 dark:text-blue-200' : 'text-gray-500 dark:text-gray-400'
             }`}>
               {format(timestamp, 'HH:mm', { locale: ptBR })}
             </p>

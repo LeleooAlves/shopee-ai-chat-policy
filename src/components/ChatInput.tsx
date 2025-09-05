@@ -1,16 +1,18 @@
-
-import React, { useState } from 'react';
-import { Send, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Package, Loader2 } from 'lucide-react';
+import MultiProductInput from './MultiProductInput';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
 interface ChatInputProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, skipAI?: boolean) => void;
   isLoading: boolean;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
   const [message, setMessage] = useState('');
+  const [inputMode, setInputMode] = useState<'text' | 'multi'>('text');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,31 +29,111 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
     }
   };
 
+
+  const handleMultiProductAnalysis = async (products: string[]) => {
+    setIsAnalyzing(true);
+    
+    // Importar a função de análise múltipla
+    const { analyzeMultipleProducts } = await import('@/services/geminiService');
+    
+    try {
+      // Enviar mensagem inicial do usuário (sem chamar IA)
+      const productList = products.map((product, index) => `${index + 1}. ${product}`).join('\n');
+      const userMessage = `Análise em lote de ${products.length} produtos:\n\n${productList}`;
+      onSendMessage(userMessage, true); // skipAI = true
+      
+      // Analisar produtos individualmente
+      const results = await analyzeMultipleProducts(products);
+      
+      // Enviar cada resultado como mensagem separada do bot
+      for (const result of results) {
+        const individualMessage = `Produto ${result.productNumber}: ${result.productName}\n\n${result.analysis}`;
+        
+        // Usar função global para adicionar mensagem do bot
+        if ((window as any).addBotMessage) {
+          (window as any).addBotMessage(individualMessage);
+        }
+        
+        // Pequeno delay entre mensagens para melhor UX
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+    } catch (error) {
+      console.error('Erro na análise múltipla:', error);
+      if ((window as any).addBotMessage) {
+        (window as any).addBotMessage('Erro ao analisar os produtos. Tente novamente.');
+      }
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="p-4 border-t bg-white border-gray-200">
-      <div className="flex gap-3 items-end">
-        <Textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Digite sua pergunta sobre a política de proibidos da Shopee..."
-          className="min-h-[50px] max-h-[120px] resize-none flex-1"
-          disabled={isLoading}
-        />
-        <Button 
-          type="submit" 
-          size="icon"
-          disabled={!message.trim() || isLoading}
-          className="h-[50px] w-[50px] flex-shrink-0 bg-orange-500 hover:bg-orange-600"
+    <div className="border-t bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+      {/* Mode Selector */}
+      <div className="flex items-center gap-2 p-3 border-b border-gray-200 dark:border-gray-700">
+        <button
+          onClick={() => setInputMode('text')}
+          className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors duration-200 ${
+            inputMode === 'text'
+              ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+              : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50 dark:text-gray-300 dark:hover:text-orange-400 dark:hover:bg-gray-700'
+          }`}
         >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </Button>
+          <Send className="w-4 h-4" />
+          Texto
+        </button>
+        
+        <button
+          onClick={() => setInputMode('multi')}
+          className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors duration-200 ${
+            inputMode === 'multi'
+              ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+              : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50 dark:text-gray-300 dark:hover:text-orange-400 dark:hover:bg-gray-700'
+          }`}
+        >
+          <Package className="w-4 h-4" />
+          Múltiplos
+        </button>
       </div>
-    </form>
+
+      {/* Input Area */}
+      <div className="p-4">
+        {inputMode === 'text' && (
+          <form onSubmit={handleSubmit}>
+            <div className="flex gap-3 items-end">
+              <Textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Digite sua pergunta sobre a política de proibidos da Shopee..."
+                className="min-h-[50px] max-h-[120px] resize-none flex-1"
+                disabled={isLoading}
+              />
+              <Button 
+                type="submit" 
+                size="icon"
+                disabled={!message.trim() || isLoading}
+                className="h-[50px] w-[50px] flex-shrink-0 bg-orange-500 hover:bg-orange-600"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {inputMode === 'multi' && (
+          <MultiProductInput 
+            onAnalyzeProducts={handleMultiProductAnalysis}
+            isAnalyzing={isAnalyzing || isLoading}
+          />
+        )}
+      </div>
+    </div>
   );
 };
 

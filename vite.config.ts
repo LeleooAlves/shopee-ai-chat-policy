@@ -39,6 +39,25 @@ export default defineConfig(({ mode }) => ({
     updateVersionPlugin(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/generativelanguage\.googleapis\.com\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // <== 365 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
+      },
       manifest: {
         name: 'Shopee IA Política de Proibidos',
         short_name: 'Shopee IA',
@@ -48,19 +67,31 @@ export default defineConfig(({ mode }) => ({
         display: 'standalone',
         start_url: '/',
         scope: '/',
+        orientation: 'portrait-primary',
+        categories: ['business', 'productivity', 'shopping'],
+        lang: 'pt-BR',
         icons: [
           {
-            src: '/icon-192x192.png',
+            src: '/favicon-96x96.png',
+            sizes: '96x96',
+            type: 'image/png',
+          },
+          {
+            src: '/favicon.png',
             sizes: '192x192',
             type: 'image/png',
           },
           {
-            src: '/icon-512x512.png',
+            src: '/favicon.png',
             sizes: '512x512',
             type: 'image/png',
+            purpose: 'any maskable',
           },
         ],
       },
+      devOptions: {
+        enabled: true
+      }
     }),
   ].filter(Boolean),
   resolve: {

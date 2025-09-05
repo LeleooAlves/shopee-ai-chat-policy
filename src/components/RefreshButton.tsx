@@ -41,7 +41,7 @@ const RefreshButton: React.FC<RefreshButtonProps> = ({ onRefresh }) => {
         title={hasUpdate ? "Nova atualização disponível! Clique para atualizar" : "Atualizar página para buscar novas atualizações"}
       >
         <RefreshCw className="w-4 h-4" />
-        <span className="text-sm font-medium">Atualizar</span>
+        <span className="text-sm font-medium"></span>
         
         {hasUpdate && (
           <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse">

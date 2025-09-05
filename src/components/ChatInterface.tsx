@@ -63,8 +63,9 @@ const ChatInterface: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = async (messageText: string) => {
-    if (isLoading) return; // bloqueia enquanto aguarda a IA responder
+  const handleSendMessage = async (messageText: string, skipAI: boolean = false) => {
+    if (isLoading && !skipAI) return; // bloqueia enquanto aguarda a IA responder
+    
     const userMessage: Message = {
       id: Date.now().toString(),
       text: messageText,
@@ -75,6 +76,10 @@ const ChatInterface: React.FC = () => {
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     saveMessagesToStorage(updatedMessages);
+
+    // Se skipAI for true, não chama a IA (usado para análise múltipla)
+    if (skipAI) return;
+
     setIsLoading(true);
 
     try {
@@ -99,6 +104,22 @@ const ChatInterface: React.FC = () => {
     }
   };
 
+  // Função para adicionar mensagem do bot diretamente
+  const addBotMessage = (messageText: string) => {
+    const aiMessage: Message = {
+      id: Date.now().toString() + Math.random().toString(),
+      text: messageText,
+      isUser: false,
+      timestamp: new Date(),
+    };
+    
+    setMessages(prevMessages => {
+      const newMessages = [...prevMessages, aiMessage];
+      saveMessagesToStorage(newMessages);
+      return newMessages;
+    });
+  };
+
   const clearChat = () => {
     const initialMessage = {
       id: '1',
@@ -110,11 +131,13 @@ const ChatInterface: React.FC = () => {
     saveMessagesToStorage([initialMessage]);
   };
 
-  // Expor função de limpar chat globalmente para o botão no header
+  // Expor funções globalmente para o botão no header e outros componentes
   React.useEffect(() => {
     (window as any).clearShopeeChat = clearChat;
+    (window as any).addBotMessage = addBotMessage;
     return () => {
       delete (window as any).clearShopeeChat;
+      delete (window as any).addBotMessage;
     };
   }, []);
 

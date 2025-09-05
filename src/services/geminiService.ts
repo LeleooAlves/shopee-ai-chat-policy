@@ -75,6 +75,126 @@ async function generateWithModel(modelName: string, prompt: string): Promise<str
   return text?.trim() ?? '';
 }
 
+export const analyzeMultipleProducts = async (products: string[]): Promise<Array<{productNumber: number, productName: string, analysis: string}>> => {
+  try {
+    const results = [];
+    
+    // Usar cache das políticas para melhor performance
+    if (!politicasCache) {
+      politicasCache = politicasData.categorias
+        .map(categoria => `${categoria.nome}\n${categoria.conteudo}`)
+        .join('\n\n');
+    }
+    const politicasTexto = politicasCache;
+
+    // Analisar cada produto individualmente
+    for (let i = 0; i < products.length; i++) {
+      const productName = products[i].trim();
+      const productNumber = i + 1;
+
+      const prompt = `POLÍTICAS DA SHOPEE:\n${politicasTexto}\n\nITEM PARA ANÁLISE: "${productName}"\n\nPRIMEIRO: CONSULTE SEU CONHECIMENTO INTERNO sobre o item "${productName}":\n- O que é este produto?\n- Qual sua função principal?\n- Em que categoria se encaixa?\n- Quais são suas características técnicas?\n- Como é usado normalmente?\n\nANÁLISE OBRIGATÓRIA - PRIORIZAÇÃO DE CATEGORIAS:
+1. Com base no seu conhecimento interno, determine a NATUREZA REAL do produto
+2. IDENTIFIQUE TODAS as categorias possíveis que poderiam se aplicar
+3. PRIORIZE a categoria MAIS ESPECÍFICA baseada na função PRINCIPAL:
+   - "câmera escondida na caneta" = CÂMERA (categoria 7), não gravador (categoria 4.1.1)
+   - "faca de cozinha" = UTENSÍLIO DOMÉSTICO (categoria 8.2), não arma (categoria 3)
+   - "pistola de pintura" = FERRAMENTA (categoria 8.3), não arma (categoria 3)
+4. Verifique se o item requer documentação/autorização = RESTRITO
+   - Palavras-chave: "autorização", "documentação", "apresentação de documentação", "documentação complementar", "mediante apresentação"
+5. Use contexto específico para determinar categoria correta:
+   - Considere o uso PRINCIPAL e finalidade baseado no seu conhecimento
+   - Evite categorias genéricas quando existe categoria específica
+6. Extraia TODAS as medidas numéricas do item (números + unidades: %, cm, g, ml, etc.)
+7. Encontre a política MAIS ESPECÍFICA que se aplica ao item
+8. Compare as medidas extraídas com os limites da política:
+   - Se USUÁRIO INFORMOU medida E está DENTRO do limite = PERMITIDO
+   - Se USUÁRIO INFORMOU medida E EXCEDE o limite = PROIBIDO
+   - Se usuário NÃO informou medida mas política tem limites = DEPENDE
+9. Se não está nas políticas = PERMITIDO
+
+REGRA CRÍTICA DE CONTEXTO: 
+- USE SEU CONHECIMENTO INTERNO para entender o produto antes de aplicar políticas
+- "Pistola de pintura" = FERRAMENTA para pintura, NÃO é arma
+- "Maçarico" = ferramenta inflamável (proibida na categoria 8.3.1)
+- "Estilingue de brinquedo" vs "Estilingue real" = contextos diferentes
+- "Faca de cozinha" vs "Faca de combate" = finalidades diferentes
+- Analise a FUNÇÃO REAL do produto, não apenas palavras similares
+
+PRIORIDADE ABSOLUTA: RESTRITO > PROIBIDO > PERMITIDO > DEPENDE
+
+REGRA CRÍTICA: SEMPRE verifique se há números no item antes de classificar como DEPENDE!
+
+EXEMPLOS OBRIGATÓRIOS:
+- "faca" (sem tamanho) = DEPENDE (política tem limite de 30cm)
+- "álcool" (sem %) = DEPENDE (política tem limite de 70%)
+- "faca 28cm" = PERMITIDO (28cm < 30cm) ← TEM MEDIDA!
+- "álcool 50%" = PERMITIDO (50% < 70%) ← TEM MEDIDA!
+- "faca 32cm" = PROIBIDO (32cm > 30cm) ← TEM MEDIDA!
+- "álcool 80%" = PROIBIDO (80% > 70%) ← TEM MEDIDA!
+- "cerveja" = RESTRITO (requer documentação)
+- "suplemento alimentar" = RESTRITO (requer apresentação de documentação)
+- "pistola de pintura" = PERMITIDO (ferramenta de trabalho, não é arma)
+- "maçarico" = PROIBIDO (ferramenta inflamável proibida)
+- "câmera escondida na caneta" = PROIBIDO (categoria 7. CÂMERAS E DRONES, não 4.1.1. GRAVADORES)
+
+ATENÇÃO ESPECIAL: Se o item contém números (50%, 28cm, etc.), NÃO é DEPENDE!
+
+EXEMPLOS DE PRIORIZAÇÃO CORRETA:
+- "câmera escondida" → categoria 7. CÂMERAS E DRONES (função principal: câmera)
+- "caneta com câmera" → categoria 7. CÂMERAS E DRONES (função principal: câmera)
+- "gravador de voz" → categoria 4.1.1. GRAVADORES DE VOZ (função principal: gravação)
+
+Responda OBRIGATORIAMENTE no formato:
+[CLASSIFICAÇÃO]: [Explicação da análise]
+
+Onde CLASSIFICAÇÃO deve ser exatamente uma das opções: PERMITIDO, PROIBIDO, DEPENDE, RESTRITO`;
+
+      const responseText = await generateWithModel(MODEL, prompt);
+
+      // Sanitização e validação da resposta
+      let finalResponse = responseText;
+      if (responseText) {
+        const sanitizedResponse = responseText.trim().replace(/[\[\]]/g, '');
+        
+        // Extrair categoria específica da resposta da IA
+        const categoriaMatch = sanitizedResponse.match(/política\s+(\d+(?:\.\d+)*\.?\s*[A-ZÁÊÇÕ\s]+)/i);
+        let categoriaRelevante = null;
+        
+        if (categoriaMatch) {
+          const categoriaNome = categoriaMatch[1].trim().replace(/\.$/, '');
+          
+          // Buscar categoria exata pelo nome
+          categoriaRelevante = politicasData.categorias.find(categoria => {
+            const nomeCategoria = categoria.nome.trim();
+            return nomeCategoria === categoriaNome || nomeCategoria.includes(categoriaNome);
+          });
+        }
+
+        if (categoriaRelevante) {
+          if (categoriaRelevante.link) {
+            finalResponse = sanitizedResponse + `\n\n${categoriaRelevante.link}`;
+          } else {
+            finalResponse = sanitizedResponse + `\n\nlink da categoria não encontrado`;
+          }
+        } else {
+          finalResponse = sanitizedResponse + `\n\nlink da categoria não encontrado`;
+        }
+      }
+
+      results.push({
+        productNumber,
+        productName,
+        analysis: finalResponse || 'Erro ao analisar produto'
+      });
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Erro ao analisar múltiplos produtos:', error);
+    throw new Error('Desculpe, ocorreu um erro ao processar os produtos. Tente novamente.');
+  }
+};
+
 export const sendMessageToGemini = async (message: string): Promise<string> => {
   try {
     const trimmed = message.trim();
