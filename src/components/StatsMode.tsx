@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, Users, Clock, Package, AlertTriangle, Calendar, Download } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, Clock, Package, AlertTriangle, Calendar } from 'lucide-react';
 
 interface ChatStats {
   totalQueries: number;
@@ -145,16 +145,6 @@ const StatsMode: React.FC = () => {
     });
   };
 
-  const exportStats = () => {
-    const dataStr = JSON.stringify(stats, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `shopee-stats-${timeRange}-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -177,10 +167,10 @@ const StatsMode: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen overflow-x-auto">
-      <div className="min-w-[1200px] max-w-7xl mx-auto p-4 sm:p-6">
+    <div className="p-3 sm:p-6 bg-white dark:bg-gray-800 h-full overflow-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-4">
           <div className="flex items-center gap-3">
             <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" />
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">
@@ -188,78 +178,64 @@ const StatsMode: React.FC = () => {
             </h1>
           </div>
           
-          <div className="flex items-center gap-4">
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value as '7d' | '30d' | 'all')}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            className="px-3 sm:px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm sm:text-base"
           >
             <option value="7d">Últimos 7 dias</option>
             <option value="30d">Últimos 30 dias</option>
             <option value="all">Todo o período</option>
           </select>
-          
-          <button
-            onClick={exportStats}
-            className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors duration-200"
-          >
-            <Download className="w-4 h-4" />
-            Exportar
-          </button>
-        </div>
         </div>
 
-        {/* Cards de métricas principais */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        {/* Cards de Estatísticas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">Total de Consultas</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.totalQueries}</p>
+              <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Total de Consultas</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.totalQueries}</p>
             </div>
-            <Package className="w-8 h-8 text-blue-600" />
+            <Package className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">Sessões de Usuário</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.userSessions}</p>
+              <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Sessões de Usuário</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.userSessions}</p>
             </div>
-            <Users className="w-8 h-8 text-green-600" />
+            <Users className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">Tempo Médio de Resposta</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {(stats.averageResponseTime / 1000).toFixed(1)}s
-              </p>
+              <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Tempo Médio</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.averageResponseTime}ms</p>
             </div>
-            <Clock className="w-8 h-8 text-purple-600" />
+            <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 dark:text-gray-300 text-sm">Categorias Ativas</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {Object.keys(stats.queriesByCategory).length}
-              </p>
+              <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Produtos Únicos</p>
+              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.mostSearchedProducts.length}</p>
             </div>
-            <TrendingUp className="w-8 h-8 text-orange-600" />
+            <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" />
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {/* Distribuição por Status */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
             Distribuição por Status
           </h3>
           <div className="space-y-4">
@@ -282,7 +258,7 @@ const StatsMode: React.FC = () => {
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
-                    <span className="text-sm text-gray-600 dark:text-gray-300 w-12 text-right">
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 w-8 sm:w-12 text-right">
                       {count}
                     </span>
                   </div>
@@ -293,8 +269,8 @@ const StatsMode: React.FC = () => {
         </div>
 
         {/* Consultas Diárias */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-          <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
             Consultas Diárias
           </h3>
           <div className="space-y-2">
@@ -304,7 +280,7 @@ const StatsMode: React.FC = () => {
               
               return (
                 <div key={day.date} className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600 dark:text-gray-300">
+                  <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100">
                     {new Date(day.date).toLocaleDateString('pt-BR', { 
                       weekday: 'short', 
                       day: '2-digit', 
@@ -318,7 +294,7 @@ const StatsMode: React.FC = () => {
                         style={{ width: `${percentage}%` }}
                       />
                     </div>
-                    <span className="text-sm text-gray-900 dark:text-gray-100 w-8 text-right">
+                    <span className="text-xs sm:text-sm text-gray-900 dark:text-gray-100 w-6 sm:w-8 text-right">
                       {day.count}
                     </span>
                   </div>

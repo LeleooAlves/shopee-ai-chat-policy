@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Clock, RotateCcw, Play, Home, Star, Medal, Award, List, CheckCircle, XCircle, X } from 'lucide-react';
-import { getRandomQuestions, type QuizQuestion } from '@/data/quizQuestions';
+import { getRandomQuestions, QuizQuestion } from '@/data/quizQuestions';
+import { generateAIQuizQuestions, AIQuizQuestion } from '@/utils/aiQuizGenerator';
 
 interface QuizResult {
   score: number;
@@ -9,13 +10,16 @@ interface QuizResult {
   date: Date;
 }
 
+type DifficultyLevel = 'easy' | 'medium' | 'hard';
+
 const QuizMode: React.FC = () => {
   const [gameState, setGameState] = useState<'menu' | 'playing' | 'finished'>('menu');
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [questions, setQuestions] = useState<AIQuizQuestion[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [score, setScore] = useState(0);
   const [timeElapsed, setTimeElapsed] = useState(0); // Tempo decorrido em segundos
+  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('medium');
   const [showResult, setShowResult] = useState(false);
   const [ranking, setRanking] = useState<QuizResult[]>([]);
   const [userAnswers, setUserAnswers] = useState<number[]>([]);
@@ -66,11 +70,9 @@ const QuizMode: React.FC = () => {
     setLoadingMessage(getRandomLoadingMessage());
     
     try {
-      // Delay de 10 segundos para mostrar a tela de carregamento
-      await new Promise(resolve => setTimeout(resolve, 10000));
-      
-      const preBuiltQuestions = getRandomQuestions(10);
-      setQuestions(preBuiltQuestions);
+      // Gerar perguntas usando Gemini 2.5 Pro + pré-prontas com dificuldade
+      const aiQuestions = await generateAIQuizQuestions(10, selectedDifficulty);
+      setQuestions(aiQuestions);
       setCurrentQuestion(0);
       setScore(0);
       setTimeElapsed(0);
@@ -122,8 +124,17 @@ const QuizMode: React.FC = () => {
   };
 
   const finishQuiz = () => {
+    // Calcular pontuação com multiplicador por dificuldade
+    const difficultyMultipliers = {
+      easy: 1.0,
+      medium: 1.5,
+      hard: 2.0
+    };
+    
+    const finalScore = Math.round(score * difficultyMultipliers[selectedDifficulty]);
+    
     const result: QuizResult = {
-      score,
+      score: finalScore,
       totalQuestions: questions.length,
       timeUsed: timeElapsed,
       date: new Date()
@@ -180,7 +191,7 @@ const QuizMode: React.FC = () => {
 
   if (gameState === 'menu') {
     return (
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-4xl mx-auto p-4 md:p-6">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Trophy className="w-8 h-8 text-orange-600" />
@@ -193,19 +204,62 @@ const QuizMode: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {/* Iniciar Quiz */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6">
             <div className="text-center">
               <Play className="w-12 h-12 text-orange-600 mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
                 Iniciar Quiz
               </h2>
+              
+              {/* Seletor de Dificuldade */}
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Selecione a Dificuldade
+                </h3>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => setSelectedDifficulty('easy')}
+                    className={`p-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      selectedDifficulty === 'easy'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <div className="text-xs">🟢</div>
+                    <div>Fácil</div>
+                  </button>
+                  <button
+                    onClick={() => setSelectedDifficulty('medium')}
+                    className={`p-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      selectedDifficulty === 'medium'
+                        ? 'bg-yellow-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <div className="text-xs">🟡</div>
+                    <div>Médio</div>
+                  </button>
+                  <button
+                    onClick={() => setSelectedDifficulty('hard')}
+                    className={`p-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                      selectedDifficulty === 'hard'
+                        ? 'bg-red-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <div className="text-xs">🔴</div>
+                    <div>Difícil</div>
+                  </button>
+                </div>
+              </div>
+
               <div className="space-y-2 text-gray-600 dark:text-gray-300 mb-6">
-                <p>• 10 perguntas pré-selecionadas</p>
+                <p>• 10 perguntas</p>
                 <p>• Sem limite de tempo</p>
                 <p>• Múltipla escolha</p>
-                <p>• Ranking global</p>
+                <p>• Pontuação por dificuldade</p>
               </div>
               <button
                 onClick={startQuiz}
@@ -218,7 +272,7 @@ const QuizMode: React.FC = () => {
           </div>
 
           {/* Ranking */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6">
             <div className="flex items-center gap-2 mb-4">
               <Trophy className="w-6 h-6 text-yellow-500" />
               <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
@@ -267,7 +321,7 @@ const QuizMode: React.FC = () => {
         {/* Popup de Carregamento */}
         {isGeneratingQuestions && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 max-w-md w-full mx-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 md:p-8 max-w-md w-full mx-4">
               <div className="text-center">
                 <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin mx-auto mb-6"></div>
                 
@@ -296,14 +350,14 @@ const QuizMode: React.FC = () => {
     const question = questions[currentQuestion];
     
     return (
-      <div className="max-w-3xl mx-auto p-6">
+      <div className="max-w-3xl mx-auto p-4 sm:p-6 min-h-screen flex flex-col">
         {/* Header com progresso, timer e botão sair */}
-        <div className="flex items-center justify-between mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
-          <div className="flex items-center gap-4">
-            <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg gap-4 sm:gap-0">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
+            <span className="text-lg font-semibold text-gray-900 dark:text-gray-100 whitespace-nowrap">
               Pergunta {currentQuestion + 1}/10
             </span>
-            <div className="w-48 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+            <div className="w-full sm:w-48 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
               <div
                 className="bg-orange-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${((currentQuestion + 1) / 10) * 100}%` }}
@@ -311,7 +365,7 @@ const QuizMode: React.FC = () => {
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-orange-600" />
               <span className="font-mono text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -321,7 +375,7 @@ const QuizMode: React.FC = () => {
             
             <button
               onClick={exitQuiz}
-              className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors duration-200"
+              className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors duration-200 flex-shrink-0"
               title="Sair do Quiz"
             >
               <X className="w-5 h-5" />
@@ -331,7 +385,7 @@ const QuizMode: React.FC = () => {
         </div>
 
         {/* Pergunta */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6 mb-6 flex-1 flex flex-col">
           <div className="mb-2">
             <span className="text-sm text-orange-600 font-medium">
               {question.category}
@@ -341,7 +395,7 @@ const QuizMode: React.FC = () => {
             {question.question}
           </h2>
 
-          <div className="space-y-3">
+          <div className="space-y-3 flex-1">
             {question.options.map((option, index) => {
               let buttonClass = 'w-full text-left p-4 rounded-lg border-2 transition-all duration-200 ';
               let circleClass = 'w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-semibold ';
@@ -389,11 +443,11 @@ const QuizMode: React.FC = () => {
             })}
           </div>
 
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 pt-4 border-t dark:border-gray-600 flex justify-center sm:justify-end">
             <button
               onClick={nextQuestion}
               disabled={selectedAnswer === null || showAnswerFeedback}
-              className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 font-semibold"
+              className="w-full sm:w-auto px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 font-semibold min-h-[48px]"
             >
               {showAnswerFeedback ? 'Aguarde...' : (currentQuestion + 1 === questions.length ? 'Finalizar' : 'Próxima')}
             </button>
@@ -407,8 +461,8 @@ const QuizMode: React.FC = () => {
     const percentage = (score / questions.length) * 100;
     
     return (
-      <div className="max-w-2xl mx-auto p-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
+      <div className="max-w-2xl mx-auto p-4 md:p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 md:p-8 text-center">
           <div className="mb-6">
             {percentage >= 80 ? (
               <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
@@ -424,8 +478,30 @@ const QuizMode: React.FC = () => {
               {score}/{questions.length}
             </div>
             
-            <div className="text-lg text-gray-600 dark:text-gray-300 mb-4">
+            <div className="text-lg text-gray-600 dark:text-gray-300 mb-2">
               {percentage.toFixed(0)}% de acertos
+            </div>
+            
+            {/* Mostrar dificuldade e multiplicador */}
+            <div className="text-sm bg-gray-100 dark:bg-gray-700 rounded-lg p-3 mb-4">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className="text-gray-600 dark:text-gray-300">Dificuldade:</span>
+                <span className={`font-semibold ${
+                  selectedDifficulty === 'easy' ? 'text-green-600' :
+                  selectedDifficulty === 'medium' ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  {selectedDifficulty === 'easy' ? '🟢 Fácil' :
+                   selectedDifficulty === 'medium' ? '🟡 Médio' : '🔴 Difícil'}
+                </span>
+              </div>
+              <div className="text-gray-600 dark:text-gray-300">
+                Multiplicador: {selectedDifficulty === 'easy' ? '1.0x' : selectedDifficulty === 'medium' ? '1.5x' : '2.0x'}
+              </div>
+              {selectedDifficulty !== 'easy' && (
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Pontuação base: {Math.round(score / (selectedDifficulty === 'medium' ? 1.5 : 2.0))} → Final: {score}
+                </div>
+              )}
             </div>
             
             <div className="text-lg text-gray-600 dark:text-gray-300 mb-4">
@@ -461,8 +537,8 @@ const QuizMode: React.FC = () => {
           {/* Modal de Revisão */}
           {showReviewModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <div className="p-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto mx-2 md:mx-0">
+                <div className="p-4 md:p-6">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                       Revisão das Respostas
@@ -481,7 +557,7 @@ const QuizMode: React.FC = () => {
                       const isCorrect = userAnswer === q.correctAnswer;
                       
                       return (
-                        <div key={qIndex} className="border dark:border-gray-600 rounded-lg p-4">
+                        <div key={qIndex} className="border dark:border-gray-600 rounded-lg p-3 md:p-4">
                           <div className="flex items-start gap-3 mb-4">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
                               isCorrect ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -492,7 +568,7 @@ const QuizMode: React.FC = () => {
                               <div className="text-sm text-orange-600 font-medium mb-1">
                                 {q.category}
                               </div>
-                              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 text-sm md:text-base">
                                 {q.question}
                               </h4>
                               
@@ -509,7 +585,7 @@ const QuizMode: React.FC = () => {
                                   }
                                   
                                   return (
-                                    <div key={oIndex} className={optionClass}>
+                                    <div key={oIndex} className={`${optionClass} text-sm md:text-base`}>
                                       <div className="flex items-center gap-2">
                                         <span className="font-medium">
                                           {String.fromCharCode(65 + oIndex)})
@@ -524,44 +600,27 @@ const QuizMode: React.FC = () => {
                                       </div>
                                     </div>
                                   );
+                                })}
+                              </div>
                               
-                              return (
-                                <div key={oIndex} className={optionClass}>
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium">
-                                      {String.fromCharCode(65 + oIndex)})
-                                    </span>
-                                    <span>{option}</span>
-                                    {oIndex === q.correctAnswer && (
-                                      <CheckCircle className="w-4 h-4 text-green-500 ml-auto" />
-                                    )}
-                                    {userAnswer === oIndex && oIndex !== q.correctAnswer && (
-                                      <XCircle className="w-4 h-4 text-red-500 ml-auto" />
-                                    )}
-                                  </div>
+                              {!isCorrect && (
+                                <div className="mt-3 p-2 md:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                                    <strong>Explicação:</strong> {q.explanation}
+                                  </p>
                                 </div>
-                              );
-                            })}
-                          </div>
-                          
-                          {!isCorrect && (
-                            <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                              <p className="text-sm text-blue-800 dark:text-blue-200">
-                                <strong>Explicação:</strong> {q.explanation}
-                              </p>
+                              )}
                             </div>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
                   </div>
                   
-                  <div className="mt-6 flex justify-end">
+                  <div className="mt-4 md:mt-6 flex justify-center md:justify-end">
                     <button
                       onClick={() => setShowReviewModal(false)}
-                      className="px-6 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors duration-200"
+                      className="w-full md:w-auto px-6 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors duration-200"
                     >
                       Fechar
                     </button>

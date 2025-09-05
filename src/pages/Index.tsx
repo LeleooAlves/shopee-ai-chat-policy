@@ -29,14 +29,14 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="h-screen bg-gradient-to-br from-orange-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 flex">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 flex">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out ${
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
-          <div className="p-4 border-b dark:border-gray-700">
+          <div className="p-3 sm:p-4 border-b dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
               
@@ -52,7 +52,7 @@ const Index = () => {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4">
+          <nav className="flex-1 p-3 sm:p-4">
             <div className="space-y-2">
               <button
                 onClick={() => {
@@ -114,8 +114,8 @@ const Index = () => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 flex-shrink-0">
-          <div className="px-4 py-3 sm:px-6">
+        <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 flex-shrink-0 sticky top-0 z-40">
+          <div className="px-3 py-2 sm:px-6 sm:py-3">
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-3">
                 <button
@@ -149,7 +149,7 @@ const Index = () => {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 flex flex-col overflow-hidden pb-safe">
           {activeTab === 'stats' && <StatsMode />}
           {activeTab === 'chat' && <ChatInterface />}
           {activeTab === 'quiz' && <QuizMode />}

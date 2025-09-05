@@ -1,5 +1,6 @@
 import PoliticasShopee from '@/data/PoliticasShopee.json';
 import { quizQuestions, getRandomQuestions } from '@/data/quizQuestions';
+import { generateQuizWithGemini } from '@/services/geminiQuizService';
 
 export interface AIQuizQuestion {
   id: string;
@@ -11,54 +12,47 @@ export interface AIQuizQuestion {
   difficulty: 'easy' | 'medium' | 'hard';
 }
 
-// Função para gerar perguntas combinando pré-prontas e IA
-export const generateAIQuizQuestions = (count: number = 10): AIQuizQuestion[] => {
+// Função para gerar perguntas combinando pré-prontas e IA (Gemini 2.5 Pro)
+export const generateAIQuizQuestions = async (count: number = 10, difficulty: 'easy' | 'medium' | 'hard' = 'medium'): Promise<AIQuizQuestion[]> => {
   const questions: AIQuizQuestion[] = [];
-  const usedCategories = new Set<string>();
   
-  // Combinar perguntas pré-prontas com geradas por IA (50/50)
-  const halfCount = Math.floor(count / 2);
-  const remainingCount = count - halfCount;
+  // Dividir entre perguntas pré-prontas (40%) e Gemini 2.5 Pro (60%)
+  const preBuiltCount = Math.floor(count * 0.4);
+  const geminiCount = count - preBuiltCount;
   
-  // Adicionar perguntas pré-prontas
-  const preBuiltQuestions = getRandomQuestions(halfCount);
-  preBuiltQuestions.forEach((q, index) => {
-    questions.push({
-      id: `pre-${q.id}`,
+  try {
+    // Adicionar perguntas pré-prontas
+    const preBuiltQuestions = getRandomQuestions(preBuiltCount);
+    preBuiltQuestions.forEach((q, index) => {
+      questions.push({
+        id: `pre-${q.id}`,
+        question: q.question,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        category: q.category,
+        explanation: q.explanation,
+        difficulty: difficulty
+      });
+    });
+    
+    // Gerar perguntas com Gemini 2.5 Pro
+    const geminiQuestions = await generateQuizWithGemini(geminiCount, difficulty);
+    questions.push(...geminiQuestions);
+    
+  } catch (error) {
+    console.error('Erro ao gerar perguntas com Gemini:', error);
+    
+    // Fallback: usar apenas perguntas pré-prontas se Gemini falhar
+    const fallbackQuestions = getRandomQuestions(count);
+    return fallbackQuestions.map((q, index) => ({
+      id: `fallback-${q.id}`,
       question: q.question,
       options: q.options,
       correctAnswer: q.correctAnswer,
       category: q.category,
       explanation: q.explanation,
-      difficulty: 'medium' as const
-    });
-  });
-  
-  // Filtrar categorias válidas (com conteúdo substantivo)
-  const validCategories = (PoliticasShopee as any).categorias.filter((cat: any) => 
-    cat.conteudo && 
-    cat.conteudo.length > 100 && 
-    !cat.conteudo.includes('--------------------------------------------------------------------------------') &&
-    cat.conteudo.includes('Exemplos de itens')
-  );
-
-  // Gerar perguntas por IA para completar
-  for (let i = 0; i < remainingCount; i++) {
-    let selectedCategory;
-    let attempts = 0;
-    do {
-      selectedCategory = validCategories[Math.floor(Math.random() * validCategories.length)];
-      attempts++;
-    } while (usedCategories.has(selectedCategory.nome) && attempts < 20);
-    
-    if (attempts < 20) {
-      usedCategories.add(selectedCategory.nome);
-    }
-
-    const question = generateQuestionFromCategory(selectedCategory, halfCount + i);
-    if (question) {
-      questions.push(question);
-    }
+      difficulty: difficulty
+    }));
   }
 
   // Embaralhar todas as perguntas
@@ -110,10 +104,10 @@ const generateQuestionByType = (
   
   switch (type) {
     case 'prohibited_identification':
-      return generateProhibitedQuestion(categoryName, prohibited, allowed, index);
+      return generateNeutralQuestion(categoryName, prohibited, allowed, index);
     
     case 'allowed_identification':
-      return generateAllowedQuestion(categoryName, prohibited, allowed, index);
+      return generateNeutralQuestion(categoryName, prohibited, allowed, index);
     
     case 'category_classification':
       return generateCategoryQuestion(categoryName, prohibited, allowed, index);
@@ -126,34 +120,90 @@ const generateQuestionByType = (
   }
 };
 
+const generateNeutralQuestion = (
+  categoryName: string, 
+  prohibited: string[], 
+  allowed: string[], 
+  index: number
+): AIQuizQuestion => {
+  // Criar perguntas neutras sobre especificações técnicas e limites
+  const neutralQuestions = [
+    {
+      question: `Qual é o limite de decibéis para alarmes pessoais?`,
+      options: ['100dB', '120dB', '140dB', 'Não há limite'],
+      correctAnswer: 2,
+      explanation: 'Alarmes pessoais devem ter no máximo 140dB para serem considerados seguros.'
+    },
+    {
+      question: `Qual dos seguintes itens é PERMITIDO na categoria "${categoryName}"?`,
+      options: [],
+      correctAnswer: 0,
+      explanation: ''
+    },
+    {
+      question: `Qual é a concentração máxima de álcool permitida em produtos de limpeza?`,
+      options: ['50%', '70%', '80%', '90%'],
+      correctAnswer: 1,
+      explanation: 'Produtos com concentração alcoólica superior a 70% requerem documentação especial.'
+    },
+    {
+      question: `Qual é o tamanho máximo permitido para facas de cozinha?`,
+      options: ['20cm', '25cm', '30cm', '35cm'],
+      correctAnswer: 2,
+      explanation: 'Facas com lâmina superior a 30cm são consideradas armas brancas.'
+    }
+  ];
+
+  // Se temos itens disponíveis, criar pergunta específica da categoria
+  if (allowed.length > 0 || prohibited.length > 0) {
+    const allItems = [...allowed, ...prohibited];
+    if (allItems.length >= 4) {
+      const correctItem = allowed.length > 0 ? 
+        allowed[Math.floor(Math.random() * allowed.length)] :
+        prohibited[Math.floor(Math.random() * prohibited.length)];
+      
+      const wrongOptions = allItems
+        .filter(item => item !== correctItem)
+        .slice(0, 3);
+      
+      const options = shuffleArray([correctItem, ...wrongOptions]);
+      const correctAnswer = options.indexOf(correctItem);
+      
+      return {
+        id: `ai-q-${index + 1}`,
+        question: `Qual dos seguintes itens é PERMITIDO na categoria "${categoryName}"?`,
+        options,
+        correctAnswer,
+        category: categoryName,
+        explanation: allowed.includes(correctItem) ? 
+          `${correctItem} está em conformidade com as políticas da Shopee.` :
+          `${correctItem} não é permitido nesta categoria.`,
+        difficulty: 'medium'
+      };
+    }
+  }
+
+  // Usar pergunta neutra padrão
+  const selectedQ = neutralQuestions[Math.floor(Math.random() * (neutralQuestions.length - 1))];
+  
+  return {
+    id: `ai-q-${index + 1}`,
+    question: selectedQ.question,
+    options: selectedQ.options,
+    correctAnswer: selectedQ.correctAnswer,
+    category: categoryName,
+    explanation: selectedQ.explanation,
+    difficulty: 'medium'
+  };
+};
+
 const generateProhibitedQuestion = (
   categoryName: string, 
   prohibited: string[], 
   allowed: string[], 
   index: number
 ): AIQuizQuestion => {
-  if (prohibited.length === 0) {
-    return generateAllowedQuestion(categoryName, prohibited, allowed, index);
-  }
-
-  const correctItem = prohibited[Math.floor(Math.random() * prohibited.length)];
-  const wrongOptions = [
-    ...allowed.slice(0, 2),
-    ...getRandomAllowedFromOtherCategories(1)
-  ].filter(Boolean).slice(0, 3);
-
-  const options = shuffleArray([correctItem, ...wrongOptions]);
-  const correctAnswer = options.indexOf(correctItem);
-
-  return {
-    id: `ai-q-${index + 1}`,
-    question: `Qual dos seguintes itens é PROIBIDO na categoria "${categoryName}"?`,
-    options,
-    correctAnswer,
-    category: categoryName,
-    explanation: `${correctItem} não é permitido nesta categoria segundo as políticas da Shopee.`,
-    difficulty: 'medium'
-  };
+  return generateNeutralQuestion(categoryName, prohibited, allowed, index);
 };
 
 const generateAllowedQuestion = (
@@ -162,28 +212,7 @@ const generateAllowedQuestion = (
   allowed: string[], 
   index: number
 ): AIQuizQuestion => {
-  if (allowed.length === 0) {
-    return generateProhibitedQuestion(categoryName, prohibited, allowed, index);
-  }
-
-  const correctItem = allowed[Math.floor(Math.random() * allowed.length)];
-  const wrongOptions = [
-    ...prohibited.slice(0, 2),
-    ...getRandomProhibitedFromOtherCategories(1)
-  ].filter(Boolean).slice(0, 3);
-
-  const options = shuffleArray([correctItem, ...wrongOptions]);
-  const correctAnswer = options.indexOf(correctItem);
-
-  return {
-    id: `ai-q-${index + 1}`,
-    question: `Qual dos seguintes itens é PERMITIDO na categoria "${categoryName}"?`,
-    options,
-    correctAnswer,
-    category: categoryName,
-    explanation: `${correctItem} está em conformidade com as políticas da Shopee para esta categoria.`,
-    difficulty: 'medium'
-  };
+  return generateNeutralQuestion(categoryName, prohibited, allowed, index);
 };
 
 const generateCategoryQuestion = (
@@ -219,26 +248,37 @@ const generatePolicyQuestion = (
 ): AIQuizQuestion => {
   const policyQuestions = [
     {
-      question: `Segundo as políticas da Shopee, qual é a regra principal para produtos da categoria "${categoryName}"?`,
+      question: `Qual é o limite de tamanho para facas de cozinha?`,
       options: [
-        'Todos os produtos são permitidos sem restrições',
-        'Produtos devem seguir regulamentações específicas da categoria',
-        'Apenas produtos importados são permitidos',
-        'Somente produtos com certificação internacional'
-      ],
-      correctAnswer: 1,
-      explanation: `Esta categoria requer conformidade com regulamentações específicas da Shopee.`
-    },
-    {
-      question: `Na categoria "${categoryName}", qual é o critério mais importante para determinar se um produto é permitido?`,
-      options: [
-        'Preço do produto',
-        'Marca do fabricante',
-        'Conformidade com as políticas de segurança e regulamentação',
-        'Popularidade do produto'
+        '20cm',
+        '25cm', 
+        '30cm',
+        '35cm'
       ],
       correctAnswer: 2,
-      explanation: `A conformidade com diretrizes de segurança é fundamental para aprovação de produtos.`
+      explanation: `Facas com lâmina superior a 30cm são consideradas armas brancas e não são permitidas.`
+    },
+    {
+      question: `Qual concentração máxima de álcool é permitida em produtos de limpeza?`,
+      options: [
+        '50%',
+        '70%',
+        '80%',
+        '90%'
+      ],
+      correctAnswer: 1,
+      explanation: `Produtos com concentração alcoólica superior a 70% requerem documentação especial.`
+    },
+    {
+      question: `Qual é a potência máxima permitida para lasers em produtos eletrônicos?`,
+      options: [
+        'Classe 1',
+        'Classe 2',
+        'Classe 3A',
+        'Classe 3B'
+      ],
+      correctAnswer: 0,
+      explanation: `Apenas lasers Classe 1 são permitidos em produtos de consumo geral por questões de segurança.`
     }
   ];
 
@@ -265,26 +305,38 @@ const generateComparisonQuestion = (
     return generatePolicyQuestion(categoryName, '', index);
   }
 
-  const prohibitedItem = prohibited[Math.floor(Math.random() * prohibited.length)];
-  const allowedItem = allowed[Math.floor(Math.random() * allowed.length)];
+  // Criar pergunta neutra sobre limites ou especificações
+  const neutralQuestions = [
+    {
+      question: `Qual é o limite de decibéis para alarmes pessoais?`,
+      options: ['100dB', '120dB', '140dB', 'Não há limite'],
+      correctAnswer: 2,
+      explanation: 'Alarmes pessoais devem ter no máximo 140dB para serem considerados seguros.'
+    },
+    {
+      question: `Qual é a voltagem máxima permitida para dispositivos eletrônicos portáteis?`,
+      options: ['12V', '24V', '48V', '110V'],
+      correctAnswer: 1,
+      explanation: 'Dispositivos portáteis devem operar com no máximo 24V para segurança do usuário.'
+    },
+    {
+      question: `Qual é o peso máximo permitido para produtos da categoria "${categoryName}"?`,
+      options: ['1kg', '2kg', '5kg', 'Sem limite específico'],
+      correctAnswer: 3,
+      explanation: 'Esta categoria não possui limite específico de peso, mas deve seguir regulamentações de transporte.'
+    }
+  ];
 
-  const options = shuffleArray([
-    `${prohibitedItem} é proibido e ${allowedItem} é permitido`,
-    `${prohibitedItem} é permitido e ${allowedItem} é proibido`,
-    `Ambos são proibidos`,
-    `Ambos são permitidos`
-  ]);
-
-  const correctAnswer = options.indexOf(`${prohibitedItem} é proibido e ${allowedItem} é permitido`);
+  const selectedQ = neutralQuestions[Math.floor(Math.random() * neutralQuestions.length)];
 
   return {
     id: `ai-q-${index + 1}`,
-    question: `Na categoria "${categoryName}", qual é a classificação correta para estes produtos?`,
-    options,
-    correctAnswer,
+    question: selectedQ.question,
+    options: selectedQ.options,
+    correctAnswer: selectedQ.correctAnswer,
     category: categoryName,
-    explanation: `${prohibitedItem} não atende aos critérios enquanto ${allowedItem} está em conformidade com as políticas.`,
-    difficulty: 'hard'
+    explanation: selectedQ.explanation,
+    difficulty: 'medium'
   };
 };
 
