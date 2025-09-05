@@ -1,28 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Shield } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { Shield } from 'lucide-react';
 import ChatInterface from '@/components/ChatInterface';
 import ClearChatButton from '@/components/ClearChatButton';
 import RefreshButton from '@/components/RefreshButton';
-import UpdateNotificationModal from '@/components/UpdateNotificationModal';
 
 const Index = () => {
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-
   useEffect(() => {
-    // Verificar se é uma nova sessão (aba foi fechada e reaberta)
-    const sessionKey = 'shopee-session-active';
-    const wasSessionActive = sessionStorage.getItem(sessionKey);
-    
-    if (!wasSessionActive) {
-      // Nova sessão - mostrar modal
-      setShowUpdateModal(true);
-      sessionStorage.setItem(sessionKey, 'true');
-    }
-
-    // Limpar sessionStorage quando a aba for fechada
+    // Limpar sessionStorage quando a aba for fechada para detecção de nova sessão
     const handleBeforeUnload = () => {
-      sessionStorage.removeItem(sessionKey);
+      sessionStorage.removeItem('shopee-session-active');
     };
+
+    // Marcar sessão como ativa
+    sessionStorage.setItem('shopee-session-active', 'true');
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     
@@ -67,11 +57,6 @@ const Index = () => {
         <ChatInterface />
       </main>
 
-      {/* Update Notification Modal */}
-      <UpdateNotificationModal 
-        isOpen={showUpdateModal}
-        onClose={() => setShowUpdateModal(false)}
-      />
     </div>
   );
 };

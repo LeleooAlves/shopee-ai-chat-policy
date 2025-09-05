@@ -133,13 +133,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
         categoryName={categoryName} 
       />
       <div className={`flex gap-3 p-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
-        <div className={`flex gap-3 w-full max-w-[95%] sm:max-w-[80%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+        <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'} ${isUser ? 'max-w-[85%]' : 'max-w-[85%]'}`}>
           <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
             isUser ? 'bg-blue-500' : 'bg-orange-500'
           }`}>
             {isUser ? '👤' : '🤖'}
           </div>
-          <div className={`rounded-lg p-3 min-w-0 flex-1 ${
+          <div className={`rounded-lg p-3 inline-block max-w-fit ${
             isUser 
               ? 'bg-blue-500 text-white' 
               : messageStyle?.bgColor || 'bg-muted text-muted-foreground'
