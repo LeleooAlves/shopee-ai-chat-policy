@@ -10,163 +10,123 @@ export interface QuizQuestion {
 export const quizQuestions: QuizQuestion[] = [
   {
     id: "1",
-    question: "Qual é o limite de tamanho para facas permitidas na Shopee?",
-    options: ["25cm", "30cm", "35cm", "40cm"],
-    correctAnswer: 1,
-    category: "ARMAS",
-    explanation: "Facas com lâmina acima de 30cm são consideradas armas brancas e são proibidas."
+    question: "Óculos com grau devem ser classificados como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
+    correctAnswer: 2,
+    category: "ACESSÓRIOS DE MODA",
+    explanation: "Óculos com grau são permitidos mediante apresentação de documentação complementar."
   },
   {
     id: "2",
-    question: "Bebidas alcoólicas na Shopee são:",
-    options: ["Permitidas sem restrições", "Totalmente proibidas", "Restritas com documentação", "Permitidas apenas cervejas"],
-    correctAnswer: 2,
-    category: "BEBIDAS ALCOÓLICAS",
-    explanation: "Bebidas alcoólicas são RESTRITAS e requerem apresentação de documentação complementar."
+    question: "Alimentos frescos (alface, couve, espinafre) devem ser classificados como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
+    correctAnswer: 1,
+    category: "ALIMENTOS E BEBIDAS",
+    explanation: "Não são permitidos alimentos frescos e produtos caseiros."
   },
   {
     id: "3",
-    question: "Qual é o limite de concentração de álcool permitido em produtos de limpeza?",
-    options: ["50%", "60%", "70%", "80%"],
+    question: "Bebidas alcoólicas devem ser classificadas como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
     correctAnswer: 2,
-    category: "PRODUTOS QUÍMICOS",
-    explanation: "Produtos com concentração de álcool acima de 70% são proibidos."
+    category: "BEBIDAS ALCOÓLICAS",
+    explanation: "Produto permitido mediante apresentação de documentação complementar (exceto bebidas caseiras que são proibidas)."
   },
   {
     id: "4",
-    question: "Câmeras escondidas são classificadas como:",
-    options: ["Permitidas", "Proibidas", "Restritas", "Depende do tamanho"],
+    question: "Laticínios não-pasteurizados devem ser classificados como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
     correctAnswer: 1,
-    category: "CÂMERAS E DRONES",
-    explanation: "Câmeras escondidas são PROIBIDAS por violarem a privacidade."
+    category: "LATICÍNIOS",
+    explanation: "Proibida a venda de laticínios não-pasteurizados."
   },
   {
     id: "5",
-    question: "Suplementos alimentares na Shopee são:",
-    options: ["Permitidos sem restrições", "Totalmente proibidos", "Restritos com documentação", "Permitidos apenas vitaminas"],
-    correctAnswer: 2,
-    category: "SUPLEMENTOS ALIMENTARES",
-    explanation: "Suplementos alimentares são RESTRITOS e requerem apresentação de documentação complementar."
+    question: "Produtos de tortura animal devem ser classificados como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
+    correctAnswer: 1,
+    category: "ANIMAIS DOMÉSTICOS",
+    explanation: "Quaisquer produtos de tortura animal são proibidos."
   },
   {
     id: "6",
-    question: "Pistolas de pintura são consideradas:",
-    options: ["Armas proibidas", "Ferramentas permitidas", "Restritas", "Depende da potência"],
+    question: "Medicamentos injetáveis para animais devem ser classificados como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
     correctAnswer: 1,
-    category: "FERRAMENTAS",
-    explanation: "Pistolas de pintura são FERRAMENTAS para trabalho e são permitidas, não são consideradas armas."
+    category: "MEDICAMENTOS VETERINÁRIOS",
+    explanation: "São proibidos medicamentos para animais que devam ser ministrados por profissionais, por exemplo, medicamentos injetáveis."
   },
   {
     id: "7",
-    question: "Qual é o limite de peso para baterias de lítio?",
-    options: ["100g", "500g", "1kg", "2kg"],
+    question: "Gravadores de voz de espionagem devem ser classificados como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
     correctAnswer: 1,
-    category: "BATERIAS",
-    explanation: "Baterias de lítio acima de 100g têm restrições especiais de transporte."
+    category: "GRAVADORES DE VOZ",
+    explanation: "São proibidos gravadores de voz de espionagem."
   },
   {
     id: "8",
-    question: "Produtos com CBD são:",
-    options: ["Permitidos", "Proibidos", "Restritos", "Permitidos apenas óleos"],
+    question: "Equipamentos para duplicar chaves de carro devem ser classificados como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
     correctAnswer: 1,
-    category: "PRODUTOS FARMACÊUTICOS",
-    explanation: "Produtos com CBD são PROIBIDOS na Shopee Brasil."
+    category: "AUTOMÓVEIS E MOTOCICLETAS",
+    explanation: "Equipamentos que permitam duplicar ou clonar sinais de acesso a sistemas fechados são proibidos."
   },
   {
     id: "9",
-    question: "Estilingues de brinquedo são:",
-    options: ["Sempre proibidos", "Permitidos se for brinquedo", "Restritos", "Depende do material"],
+    question: "Cigarros eletrônicos devem ser classificados como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
     correctAnswer: 1,
-    category: "BRINQUEDOS",
-    explanation: "Estilingues de brinquedo são PERMITIDOS, diferente de estilingues reais que são proibidos."
+    category: "TABACO / NICOTINA / CIGARROS ELETRÔNICOS",
+    explanation: "Cigarros eletrônicos, vaporizadores ou piteiras são proibidos."
   },
   {
     id: "10",
-    question: "Maçaricos são classificados como:",
-    options: ["Ferramentas permitidas", "Proibidos", "Restritos", "Depende do uso"],
+    question: "Fogos de artifício devem ser classificados como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
     correctAnswer: 1,
-    category: "FERRAMENTAS",
-    explanation: "Maçaricos são PROIBIDOS por serem ferramentas inflamáveis perigosas."
+    category: "EXPLOSIVOS",
+    explanation: "Fogos de artifício e materiais pirotécnicos perigosos são proibidos."
   },
   {
     id: "11",
-    question: "Qual é o limite de potência para lasers permitidos?",
-    options: ["1mW", "5mW", "10mW", "Todos são proibidos"],
-    correctAnswer: 0,
-    category: "ELETRÔNICOS",
-    explanation: "Lasers acima de 1mW são considerados perigosos e são proibidos."
+    question: "Botijão de gás (cheio ou vazio) deve ser classificado como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
+    correctAnswer: 1,
+    category: "INFLAMÁVEIS",
+    explanation: "Botijão de gás (cheio ou vazio) é proibido."
   },
   {
     id: "12",
-    question: "Produtos de tabaco são:",
-    options: ["Permitidos", "Proibidos", "Restritos", "Permitidos apenas cigarros eletrônicos"],
+    question: "Mercúrio e sal de mercúrio devem ser classificados como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
     correctAnswer: 1,
-    category: "TABACO",
-    explanation: "Todos os produtos de tabaco são PROIBIDOS na Shopee."
+    category: "TÓXICO E NOCIVOS",
+    explanation: "Mercúrio e sal de mercúrio são substâncias que podem causar morte ou ferimentos."
   },
   {
     id: "13",
-    question: "Walkie-talkies são:",
-    options: ["Sempre permitidos", "Sempre proibidos", "Restritos com documentação", "Depende da frequência"],
-    correctAnswer: 2,
-    category: "TELECOMUNICAÇÕES",
-    explanation: "Walkie-talkies são RESTRITOS e requerem autorização da Anatel."
+    question: "Material biológico de origem humana (sangue, plasma) deve ser classificado como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
+    correctAnswer: 1,
+    category: "PARTES DO CORPO HUMANO",
+    explanation: "Material biológico de origem humana: hormônios, sangue, plasma, sêmen, óvulos, fluídos biológicos são proibidos."
   },
   {
     id: "14",
-    question: "Qual é o limite de decibéis para alarmes pessoais?",
-    options: ["100dB", "120dB", "140dB", "Não há limite"],
+    question: "Produtos com símbolos de suástica devem ser classificados como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
     correctAnswer: 1,
-    category: "SEGURANÇA",
-    explanation: "Alarmes pessoais acima de 120dB podem causar danos auditivos e são restritos."
+    category: "POLÍTICA / RELIGIÃO",
+    explanation: "Quaisquer produtos contendo o símbolo da suásticas são proibidos."
   },
   {
     id: "15",
-    question: "Ímãs de neodímio são:",
-    options: ["Sempre permitidos", "Proibidos se muito fortes", "Restritos", "Permitidos apenas pequenos"],
+    question: "Dinheiro falso que reproduza moedas reais deve ser classificado como:",
+    options: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
     correctAnswer: 1,
-    category: "MATERIAIS PERIGOSOS",
-    explanation: "Ímãs de neodímio muito fortes são PROIBIDOS por riscos de segurança."
-  },
-  {
-    id: "16",
-    question: "Produtos veterinários são:",
-    options: ["Permitidos", "Proibidos", "Restritos com receita", "Permitidos apenas shampoos"],
-    correctAnswer: 2,
-    category: "PRODUTOS VETERINÁRIOS",
-    explanation: "Produtos veterinários são RESTRITOS e requerem documentação específica."
-  },
-  {
-    id: "17",
-    question: "Qual é a classificação de espelhos retrovisores para motos?",
-    options: ["Permitidos", "Proibidos", "Restritos", "Depende do modelo da moto"],
-    correctAnswer: 0,
-    category: "ACESSÓRIOS AUTOMOTIVOS",
-    explanation: "Espelhos retrovisores são acessórios de segurança e são PERMITIDOS."
-  },
-  {
-    id: "18",
-    question: "Produtos com mercúrio são:",
-    options: ["Permitidos em pequenas quantidades", "Totalmente proibidos", "Restritos", "Permitidos apenas termômetros"],
-    correctAnswer: 1,
-    category: "MATERIAIS PERIGOSOS",
-    explanation: "Produtos contendo mercúrio são PROIBIDOS por serem altamente tóxicos."
-  },
-  {
-    id: "19",
-    question: "Drones de brinquedo são:",
-    options: ["Sempre proibidos", "Permitidos se pequenos", "Restritos", "Permitidos sem câmera"],
-    correctAnswer: 1,
-    category: "DRONES",
-    explanation: "Drones de brinquedo pequenos (até 250g) são PERMITIDOS, acima disso são restritos."
-  },
-  {
-    id: "20",
-    question: "Qual é o limite de voltagem para produtos eletrônicos?",
-    options: ["110V", "220V", "Não há limite específico", "Depende do produto"],
-    correctAnswer: 3,
-    category: "ELETRÔNICOS",
-    explanation: "O limite de voltagem DEPENDE DO PRODUTO específico e suas certificações de segurança."
+    category: "MOEDA FÍSICA / CRÉDITOS",
+    explanation: "Dinheiro cenográfico, dinheiro falso, dinheiro de brincadeira que reproduza de forma idêntica moedas nacionais ou estrangeiras são proibidos."
   }
 ];
 

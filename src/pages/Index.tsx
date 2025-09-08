@@ -6,10 +6,10 @@ import RefreshButton from '@/components/RefreshButton';
 import ThemeToggle from '@/components/ThemeToggle';
 import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 import QuizMode from '@/components/QuizMode';
-import StatsMode from '@/components/StatsMode';
+import AnalyticsMode from '@/components/AnalyticsMode';
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState<'stats' | 'chat' | 'quiz'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'quiz' | 'analytics'>('chat');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 flex">
+    <div className="h-screen bg-gradient-to-br from-orange-50 to-orange-100 dark:from-gray-900 dark:to-gray-800 flex overflow-hidden relative">
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 sm:w-72 bg-white dark:bg-gray-800 shadow-lg transform transition-transform duration-300 ease-in-out ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -55,20 +55,16 @@ const Index = () => {
           <nav className="flex-1 p-3 sm:p-4">
             <div className="space-y-2">
               <button
-                onClick={() => {
-                  setActiveTab('stats');
-                  setSidebarOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-colors duration-200 ${
-                  activeTab === 'stats'
-                    ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                onClick={() => setActiveTab('analytics')}
+                className={`flex items-center gap-3 w-full px-4 py-3 text-left transition-colors ${
+                  activeTab === 'analytics'
+                    ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-r-2 border-orange-500'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 <BarChart3 className="w-5 h-5" />
-                <span className="font-medium">Estatísticas</span>
+                Analytics
               </button>
-
               <button
                 onClick={() => {
                   setActiveTab('chat');
@@ -149,10 +145,10 @@ const Index = () => {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col overflow-hidden pb-safe">
-          {activeTab === 'stats' && <StatsMode />}
+        <main className="flex-1 overflow-hidden pb-safe">
           {activeTab === 'chat' && <ChatInterface />}
           {activeTab === 'quiz' && <QuizMode />}
+          {activeTab === 'analytics' && <AnalyticsMode />}
         </main>
       </div>
 

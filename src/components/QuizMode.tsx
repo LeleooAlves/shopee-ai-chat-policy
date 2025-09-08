@@ -1,7 +1,285 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Clock, RotateCcw, Play, Home, Star, Medal, Award, List, CheckCircle, XCircle, X } from 'lucide-react';
-import { getRandomQuestions, QuizQuestion } from '@/data/quizQuestions';
-import { generateAIQuizQuestions, AIQuizQuestion } from '@/utils/aiQuizGenerator';
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
+import { Progress } from './ui/progress';
+import { Clock, Trophy, Target, Zap, CheckCircle, XCircle, RotateCcw, Play, User, X, List } from 'lucide-react';
+import { toast } from 'sonner';
+import { supabaseService } from '../services/supabaseService';
+import { UserInputModal } from './UserInputModal';
+import { LeaderboardModal } from './LeaderboardModal';
+// Definindo tipos localmente para evitar problemas de importação
+interface AIQuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  explanation?: string;
+  category?: string;
+}
+
+interface User {
+  id: string;
+  first_name: string;
+  last_name: string;
+  team_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Perguntas baseadas nas políticas da Shopee
+const shopeeQuestions: AIQuizQuestion[] = [
+  {
+    id: 'q1',
+    question: 'Uma faca de cozinha de 25cm da categoria "Utensílios Domésticos" deve ser considerada:',
+    options: [
+      'PERMITIDO',
+      'PROIBIDO', 
+      'RESTRITO',
+      'DEPENDE'
+    ],
+    correctAnswer: 0,
+    difficulty: 'medium',
+    explanation: 'Facas de cozinha até 30cm são permitidas na Shopee quando vendidas como utensílios domésticos.',
+    category: 'Utensílios e Ferramentas'
+  },
+  {
+    id: 'q2',
+    question: 'Bebida alcoólica artesanal da categoria "Bebidas" deve ser considerada:',
+    options: [
+      'PERMITIDO',
+      'PROIBIDO',
+      'RESTRITO',
+      'DEPENDE'
+    ],
+    correctAnswer: 2,
+    difficulty: 'hard',
+    explanation: 'Bebidas alcoólicas são RESTRITAS, exigindo documentação complementar para venda.',
+    category: 'Bebidas e Alimentos'
+  },
+  {
+    id: 'q3',
+    question: 'Suplemento alimentar sem registro na ANVISA da categoria "Saúde" deve ser considerado:',
+    options: [
+      'PERMITIDO',
+      'PROIBIDO',
+      'RESTRITO',
+      'DEPENDE'
+    ],
+    correctAnswer: 1,
+    difficulty: 'medium',
+    explanation: 'Suplementos sem registro na ANVISA são PROIBIDOS na plataforma.',
+    category: 'Saúde e Beleza'
+  },
+  {
+    id: 'q4',
+    question: 'Réplica de bolsa de marca famosa da categoria "Acessórios" deve ser considerada:',
+    options: [
+      'PERMITIDO',
+      'PROIBIDO',
+      'RESTRITO',
+      'DEPENDE'
+    ],
+    correctAnswer: 1,
+    difficulty: 'easy',
+    explanation: 'Réplicas e produtos falsificados são estritamente PROIBIDOS na Shopee.',
+    category: 'Moda e Acessórios'
+  },
+  {
+    id: 'q5',
+    question: 'Como a Shopee lida com disputas entre compradores e vendedores?',
+    options: [
+      'Sempre favorece o comprador',
+      'Sistema de mediação imparcial analisando evidências',
+      'Sempre favorece o vendedor',
+      'Não intervém em disputas'
+    ],
+    correctAnswer: 1,
+    difficulty: 'medium',
+    explanation: 'A Shopee oferece sistema de resolução de disputas baseado em evidências.',
+    category: 'Resolução de Disputas'
+  },
+  {
+    id: 'q6',
+    question: 'Quais informações pessoais são protegidas pela política de privacidade da Shopee?',
+    options: [
+      'Apenas dados de pagamento',
+      'Nome, endereço, telefone, dados de pagamento e histórico de compras',
+      'Apenas histórico de compras',
+      'Nenhuma informação é protegida'
+    ],
+    correctAnswer: 1,
+    difficulty: 'hard',
+    explanation: 'A Shopee protege ampla gama de dados pessoais conforme legislação de privacidade.',
+    category: 'Privacidade e Dados'
+  },
+  {
+    id: 'q7',
+    question: 'O que caracteriza spam na plataforma Shopee?',
+    options: [
+      'Apenas mensagens repetitivas',
+      'Mensagens não solicitadas, repetitivas, irrelevantes ou promocionais excessivas',
+      'Apenas links externos',
+      'Somente mensagens automáticas'
+    ],
+    correctAnswer: 1,
+    difficulty: 'medium',
+    explanation: 'Spam inclui diversos tipos de comunicação inadequada que prejudicam a experiência do usuário.',
+    category: 'Políticas de Comunicação'
+  },
+  {
+    id: 'q8',
+    question: 'Qual é a política da Shopee sobre produtos perigosos?',
+    options: [
+      'Produtos perigosos são permitidos com aviso',
+      'Produtos perigosos são estritamente proibidos',
+      'Apenas alguns produtos perigosos são permitidos',
+      'Não há restrições'
+    ],
+    correctAnswer: 1,
+    difficulty: 'easy',
+    explanation: 'A Shopee proíbe produtos que possam causar danos à segurança dos usuários.',
+    category: 'Segurança de Produtos'
+  },
+  {
+    id: 'q9',
+    question: 'Como funciona o sistema de proteção ao comprador da Shopee?',
+    options: [
+      'Não oferece proteção',
+      'Garantia de reembolso para produtos não recebidos ou não conformes',
+      'Proteção apenas para produtos caros',
+      'Proteção apenas por 24 horas'
+    ],
+    correctAnswer: 1,
+    difficulty: 'medium',
+    explanation: 'A Shopee oferece Garantia Shopee que protege compradores em diversas situações.',
+    category: 'Proteção ao Consumidor'
+  },
+  {
+    id: 'q10',
+    question: 'O que são práticas comerciais desleais na Shopee?',
+    options: [
+      'Apenas preços muito baixos',
+      'Manipulação de preços, avaliações falsas, informações enganosas',
+      'Apenas vendas em grande quantidade',
+      'Somente produtos importados'
+    ],
+    correctAnswer: 1,
+    difficulty: 'hard',
+    explanation: 'Práticas desleais incluem qualquer comportamento que engane ou prejudique outros usuários.',
+    category: 'Práticas Comerciais'
+  }
+];
+
+// Produtos baseados EXCLUSIVAMENTE no PoliticasShopee.json para geração de perguntas pela IA
+const productExamplesFromPolicies = [
+  { item: 'Armações de óculos sem grau', category: 'ACESSÓRIOS DE MODA', answer: 'PERMITIDO', explanation: 'Armações de óculos sem grau são permitidas.' },
+  { item: 'Bolo de pote sem selagem industrial', category: 'ALIMENTOS E BEBIDAS', answer: 'PROIBIDO', explanation: 'Bolos com cobertura ou recheio sem selagem industrial são proibidos.' },
+  { item: 'Carne seca', category: 'ALIMENTOS E BEBIDAS', answer: 'PERMITIDO', explanation: 'Carne seca é permitida por ser processada e embalada.' },
+  { item: 'Queijo ricota', category: 'LATICÍNIOS', answer: 'PROIBIDO', explanation: 'Queijos frescos como cottage e ricota são proibidos.' },
+  { item: 'Queijo parmesão', category: 'LATICÍNIOS', answer: 'PERMITIDO', explanation: 'Queijo parmesão é permitido por ser processado.' },
+  { item: 'Ratoeiras', category: 'ANIMAIS DOMÉSTICOS', answer: 'PROIBIDO', explanation: 'Produtos destinados à captura de espécies são proibidos.' },
+  { item: 'Coleira de pet', category: 'ANIMAIS DOMÉSTICOS', answer: 'PERMITIDO', explanation: 'Coleiras de pet são permitidas.' },
+  { item: 'Suplementos alimentares para animais', category: 'MEDICAMENTOS VETERINÁRIOS', answer: 'PERMITIDO', explanation: 'Suplementos alimentares e vitaminas são permitidos para todos sellers.' },
+  { item: 'Microfones de gravação profissional', category: 'GRAVADORES DE VOZ', answer: 'PERMITIDO', explanation: 'Gravadores convencionais para uso profissional são permitidos.' },
+  { item: 'Cinzeiros de decoração', category: 'TABACO / NICOTINA / CIGARROS ELETRÔNICOS', answer: 'PERMITIDO', explanation: 'Cinzeiros de decoração são permitidos.' },
+  { item: 'Narguilé', category: 'TABACO / NICOTINA / CIGARROS ELETRÔNICOS', answer: 'PROIBIDO', explanation: 'Narguilé é proibido.' },
+  { item: 'Estalinhos', category: 'EXPLOSIVOS', answer: 'PROIBIDO', explanation: 'Estalinhos, bombinhas, biribinhas são proibidos.' },
+  { item: 'Aerossóis até 500g', category: 'EXPLOSIVOS', answer: 'PERMITIDO', explanation: 'Aerossóis como desodorante, protetor solar até 500 gramas são permitidos.' },
+  { item: 'Isqueiro elétrico', category: 'INFLAMÁVEIS', answer: 'PERMITIDO', explanation: 'Isqueiro elétrico, isqueiro sem gás são permitidos.' },
+  { item: 'Fósforos', category: 'INFLAMÁVEIS', answer: 'PROIBIDO', explanation: 'Fósforos são proibidos.' },
+  { item: 'Asbesto (amianto)', category: 'TÓXICO E NOCIVOS', answer: 'PROIBIDO', explanation: 'Asbesto (amianto) em materiais de construção é proibido.' },
+  { item: 'Cabelo humano para uso comercial', category: 'PARTES DO CORPO HUMANO', answer: 'PERMITIDO', explanation: 'Cabelo humano ou perucas para uso comercial são permitidos.' },
+  { item: 'Esqueletos humanos', category: 'PARTES DO CORPO HUMANO', answer: 'PROIBIDO', explanation: 'Pele, ossos, esqueletos, córneas, partes do corpo são proibidos.' },
+  { item: 'Bandeiras de grupos extremistas', category: 'POLÍTICA / RELIGIÃO', answer: 'PROIBIDO', explanation: 'Bandeiras e insígnias de grupos extremistas são proibidas.' },
+  { item: 'Barras de ouro', category: 'MOEDA FÍSICA / CRÉDITOS', answer: 'PROIBIDO', explanation: 'Barras de ouro, prata, bronze, níquel, platina são proibidas.' }
+];
+
+// Função para gerar pergunta pela IA baseada nas políticas reais
+const generateAIQuestion = (usedProducts: Set<string>): AIQuizQuestion => {
+  // Filtra produtos não utilizados
+  const availableProducts = productExamplesFromPolicies.filter(product => 
+    !usedProducts.has(`${product.item}_${product.category}`)
+  );
+  
+  // Se não há produtos disponíveis, reinicia o conjunto
+  if (availableProducts.length === 0) {
+    usedProducts.clear();
+    return generateAIQuestion(usedProducts);
+  }
+  
+  const product = availableProducts[Math.floor(Math.random() * availableProducts.length)];
+  const difficulties = ['easy', 'medium', 'hard'];
+  
+  // Marca produto como usado
+  usedProducts.add(`${product.item}_${product.category}`);
+  
+  return {
+    id: `ai_${Date.now()}_${Math.random()}`,
+    question: `${product.item} deve ser classificado como:`,
+    options: ['PERMITIDO', 'PROIBIDO', 'RESTRITO', 'DEPENDE'],
+    correctAnswer: ['PERMITIDO', 'PROIBIDO', 'RESTRITO', 'DEPENDE'].indexOf(product.answer),
+    difficulty: difficulties[Math.floor(Math.random() * difficulties.length)] as 'easy' | 'medium' | 'hard',
+    explanation: product.explanation,
+    category: product.category
+  };
+};
+
+// Função para gerar perguntas híbridas (60% IA + 40% pré-prontas)
+const generateAIQuizQuestions = async (count: number, difficulty: string): Promise<AIQuizQuestion[]> => {
+  // Tempo de carregamento para simular processamento IA
+  const loadingTime = 2000 + Math.random() * 3000; // 2-5 segundos
+  await new Promise(resolve => setTimeout(resolve, loadingTime));
+
+  let filteredQuestions = shopeeQuestions;
+
+  // Filtra por dificuldade se especificada
+  if (difficulty !== 'all') {
+    filteredQuestions = shopeeQuestions.filter(q => q.difficulty === difficulty);
+  }
+
+  const aiQuestionsCount = Math.ceil(count * 0.6); // 60% IA
+  const presetQuestionsCount = count - aiQuestionsCount; // 40% pré-prontas
+
+  // Set para controlar produtos já utilizados
+  const usedProducts = new Set<string>();
+  const usedPresetIds = new Set<string>();
+  const allUsedQuestions = new Set<string>();
+
+  // Gera perguntas da IA sem repetições
+  const aiQuestions: AIQuizQuestion[] = [];
+  for (let i = 0; i < aiQuestionsCount; i++) {
+    const question = generateAIQuestion(usedProducts);
+    const questionKey = `${question.question}_${question.correctAnswer}`;
+    if (!allUsedQuestions.has(questionKey)) {
+      allUsedQuestions.add(questionKey);
+      aiQuestions.push(question);
+    } else {
+      // Se repetiu, tenta novamente
+      i--;
+    }
+  }
+
+  // Seleciona perguntas pré-prontas sem repetições
+  const shuffledPreset = [...filteredQuestions].sort(() => Math.random() - 0.5);
+  const presetQuestions: AIQuizQuestion[] = [];
+  
+  for (const question of shuffledPreset) {
+    if (presetQuestions.length >= presetQuestionsCount) break;
+    const questionKey = `${question.question}_${question.correctAnswer}`;
+    if (!usedPresetIds.has(question.id) && !allUsedQuestions.has(questionKey)) {
+      usedPresetIds.add(question.id);
+      allUsedQuestions.add(questionKey);
+      presetQuestions.push(question);
+    }
+  }
+
+  // Combina e embaralha
+  const allQuestions = [...aiQuestions, ...presetQuestions];
+  return allQuestions.sort(() => Math.random() - 0.5).slice(0, count);
+};
+
 
 interface QuizResult {
   score: number;
@@ -17,6 +295,10 @@ const QuizMode: React.FC = () => {
   const [questions, setQuestions] = useState<AIQuizQuestion[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [teamName, setTeamName] = useState('');
+  
   const [score, setScore] = useState(0);
   const [timeElapsed, setTimeElapsed] = useState(0); // Tempo decorrido em segundos
   const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyLevel>('medium');
@@ -27,6 +309,10 @@ const QuizMode: React.FC = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [globalRanking, setGlobalRanking] = useState<any[]>([]);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   // Timer crescente
   useEffect(() => {
@@ -39,17 +325,45 @@ const QuizMode: React.FC = () => {
     return () => clearInterval(interval);
   }, [gameState]);
 
-  // Carregar ranking do localStorage
+  // Carregar ranking do localStorage na inicialização
   useEffect(() => {
-    const savedRanking = localStorage.getItem('shopee-quiz-ranking');
+    const savedRanking = localStorage.getItem('quizRanking');
     if (savedRanking) {
-      const parsed = JSON.parse(savedRanking).map((result: any) => ({
-        ...result,
-        date: new Date(result.date)
+      const parsedRanking = JSON.parse(savedRanking).map((item: any) => ({
+        ...item,
+        date: new Date(item.date)
       }));
-      setRanking(parsed);
+      setRanking(parsedRanking);
     }
+    
+    const savedUserData = localStorage.getItem('shopee-quiz-user-data');
+    if (savedUserData) {
+      const userData = JSON.parse(savedUserData);
+      setFirstName(userData.firstName || '');
+      setLastName(userData.lastName || '');
+      setTeamName(userData.teamName || '');
+    }
+    
+    loadGlobalRanking();
   }, []);
+
+  // Carregar ranking global do Supabase
+  const loadGlobalRanking = async () => {
+    try {
+      const data = await supabaseService.getGlobalRanking(10);
+      setGlobalRanking(data);
+    } catch (error) {
+      console.error('Erro ao carregar ranking global:', error);
+    }
+  };
+
+  // Salvar dados do usuário no localStorage sempre que mudarem
+  useEffect(() => {
+    if (firstName || lastName || teamName) {
+      const userData = { firstName, lastName, teamName };
+      localStorage.setItem('shopee-quiz-user-data', JSON.stringify(userData));
+    }
+  }, [firstName, lastName, teamName]);
 
   const getRandomLoadingMessage = () => {
     const messages = [
@@ -65,30 +379,38 @@ const QuizMode: React.FC = () => {
     return messages[Math.floor(Math.random() * messages.length)];
   };
 
+  const handleUserSubmit = (firstName: string, lastName: string, teamName: string) => {
+    setFirstName(firstName);
+    setLastName(lastName);
+    setTeamName(teamName);
+    setShowUserModal(false);
+    startQuiz();
+  };
+
   const startQuiz = async () => {
     setIsGeneratingQuestions(true);
-    setLoadingMessage(getRandomLoadingMessage());
+    setGameState('playing');
+    setCurrentQuestion(0);
+    setScore(0);
+    setTimeElapsed(0);
+    setSelectedAnswer(null);
+    setUserAnswers([]);
+    setShowAnswerFeedback(false);
     
     try {
-      // Gerar perguntas usando Gemini 2.5 Pro + pré-prontas com dificuldade
-      const aiQuestions = await generateAIQuizQuestions(10, selectedDifficulty);
-      setQuestions(aiQuestions);
-      setCurrentQuestion(0);
-      setScore(0);
-      setTimeElapsed(0);
-      setSelectedAnswer(null);
-      setShowResult(false);
-      setUserAnswers([]);
-      setShowAnswerFeedback(false);
-      setShowReviewModal(false);
-      setGameState('playing');
+      const generatedQuestions = await generateAIQuizQuestions(10, selectedDifficulty);
+      setQuestions(generatedQuestions);
     } catch (error) {
       console.error('Erro ao gerar perguntas:', error);
-      // Fallback: usar perguntas padrão se houver erro
-      setQuestions([]);
+      toast.error('Erro ao gerar perguntas do quiz');
+      setGameState('menu');
     } finally {
       setIsGeneratingQuestions(false);
     }
+  };
+
+  const handleStartQuiz = () => {
+    startQuiz();
   };
 
   const selectAnswer = (answerIndex: number) => {
@@ -123,57 +445,78 @@ const QuizMode: React.FC = () => {
     }
   };
 
-  const finishQuiz = () => {
-    // Calcular pontuação com multiplicador por dificuldade
-    const difficultyMultipliers = {
-      easy: 1.0,
-      medium: 1.5,
-      hard: 2.0
-    };
+  const finishQuiz = async () => {
+    const difficultyPoints = { easy: 1, medium: 2, hard: 3 };
+    const finalScore = score * difficultyPoints[selectedDifficulty];
     
-    const finalScore = Math.round(score * difficultyMultipliers[selectedDifficulty]);
-    
+    // Salvar resultado no Supabase
+    try {
+      await supabaseService.saveQuizResult(
+        firstName,
+        lastName,
+        teamName,
+        score,
+        timeElapsed,
+        finalScore,
+        selectedDifficulty,
+        questions.length
+      );
+      toast.success('Resultado salvo com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar resultado:', error);
+      toast.error('Erro ao salvar resultado do quiz');
+    }
+
     const result: QuizResult = {
       score: finalScore,
       totalQuestions: questions.length,
       timeUsed: timeElapsed,
-      date: new Date()
+      date: new Date(),
     };
 
-    // Salvar no ranking
-    const newRanking = [...ranking, result]
-      .sort((a, b) => {
-        // Ordenar por pontuação (maior primeiro), depois por tempo (menor primeiro)
-        if (a.score !== b.score) return b.score - a.score;
-        return a.timeUsed - b.timeUsed;
-      })
-      .slice(0, 10); // Manter apenas top 10
-
+    // Adicionar ao ranking local
+    const newRanking = [...ranking, result].sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.timeUsed - b.timeUsed;
+    });
     setRanking(newRanking);
-    localStorage.setItem('shopee-quiz-ranking', JSON.stringify(newRanking));
+    localStorage.setItem('quizRanking', JSON.stringify(newRanking));
+
+    // Recarregar ranking global após salvar
+    loadGlobalRanking();
 
     setGameState('finished');
+  };
+
+  const exitQuiz = () => {
+    setShowExitModal(true);
+  };
+
+  const confirmExit = () => {
+    setGameState('menu');
+    setCurrentQuestion(0);
+    setScore(0);
+    setSelectedAnswer(null);
+    setShowResult(false);
+    setUserAnswers([]);
+    setShowExitModal(false);
   };
 
   const resetQuiz = () => {
     setGameState('menu');
     setCurrentQuestion(0);
     setScore(0);
+    setTimeElapsed(0);
     setSelectedAnswer(null);
     setShowResult(false);
+    setUserAnswers([]);
+    setFirstName('');
+    setLastName('');
+    setTeamName('');
   };
 
-  const exitQuiz = () => {
-    if (window.confirm('Tem certeza que deseja sair do quiz? Todo o progresso será perdido.')) {
-      setGameState('menu');
-      setCurrentQuestion(0);
-      setScore(0);
-      setSelectedAnswer(null);
-      setShowResult(false);
-      setUserAnswers([]);
-      setShowAnswerFeedback(false);
-      setTimeElapsed(0);
-    }
+  const cancelExit = () => {
+    setShowExitModal(false);
   };
 
   const formatTime = (seconds: number) => {
@@ -191,130 +534,213 @@ const QuizMode: React.FC = () => {
 
   if (gameState === 'menu') {
     return (
-      <div className="max-w-4xl mx-auto p-4 md:p-6">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Trophy className="w-8 h-8 text-orange-600" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-              Modo Aprendizado
-            </h1>
-          </div>
-          <p className="text-gray-600 dark:text-gray-300 text-lg">
-            Teste seus conhecimentos sobre as políticas da Shopee!
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          {/* Iniciar Quiz */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6">
-            <div className="text-center">
-              <Play className="w-12 h-12 text-orange-600 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
-                Iniciar Quiz
-              </h2>
+      <div className="min-h-screen flex items-start justify-center py-8 px-4 pb-16">
+        <div className="max-w-7xl w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Formulário de Registro */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <User className="w-5 h-5 text-orange-500" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Informações do Participante
+                </h2>
+              </div>
               
-              {/* Seletor de Dificuldade */}
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Selecione a Dificuldade
-                </h3>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => setSelectedDifficulty('easy')}
-                    className={`p-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                      selectedDifficulty === 'easy'
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    <div className="text-xs">🟢</div>
-                    <div>Fácil</div>
-                  </button>
-                  <button
-                    onClick={() => setSelectedDifficulty('medium')}
-                    className={`p-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                      selectedDifficulty === 'medium'
-                        ? 'bg-yellow-500 text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    <div className="text-xs">🟡</div>
-                    <div>Médio</div>
-                  </button>
-                  <button
-                    onClick={() => setSelectedDifficulty('hard')}
-                    className={`p-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                      selectedDifficulty === 'hard'
-                        ? 'bg-red-500 text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    <div className="text-xs">🔴</div>
-                    <div>Difícil</div>
-                  </button>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Nome
+                    </label>
+                    <input
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      placeholder="Seu nome"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Sobrenome
+                    </label>
+                    <input
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      placeholder="Seu sobrenome"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Time
+                    </label>
+                    <input
+                      type="text"
+                      value={teamName}
+                      onChange={(e) => setTeamName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                      placeholder="Nome do seu time"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Dificuldade
+                  </label>
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    <button
+                      onClick={() => setSelectedDifficulty('easy')}
+                      className={`p-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                        selectedDifficulty === 'easy'
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      <div className="text-xs">🟢</div>
+                      <div>Fácil</div>
+                      <div className="text-xs mt-1">1 ponto/acerto</div>
+                    </button>
+                    <button
+                      onClick={() => setSelectedDifficulty('medium')}
+                      className={`p-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                        selectedDifficulty === 'medium'
+                          ? 'bg-yellow-500 text-white'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      <div className="text-xs">🟡</div>
+                      <div>Médio</div>
+                      <div className="text-xs mt-1">2 pontos/acerto</div>
+                    </button>
+                    <button
+                      onClick={() => setSelectedDifficulty('hard')}
+                      className={`p-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                        selectedDifficulty === 'hard'
+                          ? 'bg-red-500 text-white'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      }`}
+                    >
+                      <div className="text-xs">🔴</div>
+                      <div>Difícil</div>
+                      <div className="text-xs mt-1">3 pontos/acerto</div>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                    <div className="space-y-2 text-gray-600 dark:text-gray-300">
+                      <p>• 10 perguntas</p>
+                      <p>• Sem limite de tempo</p>
+                      <p>• Múltipla escolha</p>
+                      <p>• Fácil: 1 ponto por acerto</p>
+                      <p>• Médio: 2 pontos por acerto</p>
+                      <p>• Difícil: 3 pontos por acerto</p>
+                    </div>
+                    <button
+                      onClick={handleStartQuiz}
+                      disabled={isGeneratingQuestions}
+                      className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 font-semibold"
+                    >
+                      {isGeneratingQuestions ? 'Preparando Quiz...' : 'Começar Quiz'}
+                    </button>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div className="space-y-2 text-gray-600 dark:text-gray-300 mb-6">
-                <p>• 10 perguntas</p>
-                <p>• Sem limite de tempo</p>
-                <p>• Múltipla escolha</p>
-                <p>• Pontuação por dificuldade</p>
+            {/* Ranking Global */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Trophy className="w-5 h-5 text-orange-500" />
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Ranking Global
+                </h2>
+                <Button
+                  onClick={loadGlobalRanking}
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto"
+                >
+                  🔄
+                </Button>
               </div>
-              <button
-                onClick={startQuiz}
-                disabled={isGeneratingQuestions}
-                className="w-full bg-orange-600 text-white py-3 px-6 rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 font-semibold"
-              >
-                {isGeneratingQuestions ? 'Preparando Quiz...' : 'Começar Quiz'}
-              </button>
-            </div>
-          </div>
-
-          {/* Ranking */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Trophy className="w-6 h-6 text-yellow-500" />
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                Ranking Top 10
-              </h2>
-            </div>
-            
-            {ranking.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-                Nenhum resultado ainda. Seja o primeiro!
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {ranking.map((result, index) => (
-                  <div
-                    key={index}
-                    className={`flex items-center justify-between p-3 rounded-lg ${
-                      index === 0 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-gray-50 dark:bg-gray-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`font-bold ${
-                        index === 0 ? 'text-yellow-600' : 'text-gray-600 dark:text-gray-300'
-                      }`}>
-                        #{index + 1}
-                      </span>
-                      <div>
-                        <div className={`font-semibold ${getScoreColor(result.score, result.totalQuestions)}`}>
-                          {result.score}/{result.totalQuestions}
+              
+              {globalRanking.length === 0 ? (
+                <div className="text-center py-6 text-gray-500">
+                  <Trophy className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm">Nenhum resultado ainda</p>
+                  <p className="text-xs">Seja o primeiro!</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {globalRanking.slice(0, 5).map((entry, index) => (
+                    <div
+                      key={`${entry.name}-${entry.date?.getTime()}`}
+                      className={`flex items-center gap-3 p-3 rounded-lg ${
+                        index === 0 
+                          ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200' 
+                          : index === 1
+                          ? 'bg-gradient-to-r from-gray-50 to-gray-100 border border-gray-200'
+                          : index === 2
+                          ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200'
+                          : 'bg-gray-50 border border-gray-100'
+                      }`}
+                    >
+                      <div className="flex-shrink-0">
+                        {index === 0 && <Trophy className="w-4 h-4 text-yellow-500" />}
+                        {index === 1 && <span className="text-gray-400 text-sm font-bold">🥈</span>}
+                        {index === 2 && <span className="text-amber-600 text-sm font-bold">🥉</span>}
+                        {index > 2 && <span className="w-4 h-4 flex items-center justify-center text-xs font-bold text-gray-500">#{index + 1}</span>}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium text-gray-900 text-sm truncate">
+                            {entry.name}
+                          </p>
+                          <Badge variant="secondary" className="text-xs px-1 py-0">
+                            {entry.team}
+                          </Badge>
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {formatTime(result.timeUsed)}
+                        <div className="flex items-center gap-3 text-xs text-gray-600">
+                          <span className="font-medium">
+                            {entry.correctAnswers || 0}/{entry.totalQuestions || 10} ({entry.score} pts)
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {Math.floor(entry.timeUsed / 60)}:{(entry.timeUsed % 60).toString().padStart(2, '0')}
+                          </span>
+                          <Badge 
+                            variant={entry.difficulty === 'easy' ? 'secondary' : entry.difficulty === 'medium' ? 'default' : 'destructive'} 
+                            className="text-xs px-1 py-0"
+                          >
+                            {entry.difficulty === 'easy' ? '🟢 Fácil' : entry.difficulty === 'medium' ? '🟡 Médio' : '🔴 Difícil'}
+                          </Badge>
                         </div>
                       </div>
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                      {result.date.toLocaleDateString('pt-BR')}
+                  ))}
+                  
+                  {globalRanking.length > 5 && (
+                    <div className="text-center pt-2">
+                      <Button
+                        onClick={() => setShowLeaderboard(true)}
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs"
+                      >
+                        Ver todos ({globalRanking.length})
+                      </Button>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         
@@ -346,7 +772,7 @@ const QuizMode: React.FC = () => {
     );
   }
 
-  if (gameState === 'playing') {
+  if (gameState === 'playing' && questions.length > 0 && questions[currentQuestion]) {
     const question = questions[currentQuestion];
     
     return (
@@ -384,27 +810,67 @@ const QuizMode: React.FC = () => {
           </div>
         </div>
 
+        {/* Modal de Confirmação de Saída */}
+        {showExitModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+                Confirmar Saída
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                Tem certeza que deseja sair do quiz? Todo o progresso será perdido.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={cancelExit}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors duration-200"
+                >
+                  Cancelar
+                </button>
+                <Button 
+                  onClick={() => setShowUserModal(true)}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  size="lg"
+                >
+                  <Play className="w-5 h-5 mr-2" />
+                  Iniciar Quiz
+                </Button>
+                
+                <Button 
+                  onClick={() => setShowLeaderboard(true)}
+                  variant="outline"
+                  className="w-full"
+                  size="lg"
+                >
+                  <Trophy className="w-5 h-5 mr-2" />
+                  Ver Ranking Global
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Pergunta */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6 mb-6 flex-1 flex flex-col">
           <div className="mb-2">
             <span className="text-sm text-orange-600 font-medium">
-              {question.category}
+              {question?.category || 'Categoria'}
             </span>
           </div>
           <h2 className="text-xl font-semibold mb-6 text-gray-900 dark:text-gray-100">
-            {question.question}
+            {question?.question || 'Carregando pergunta...'}
           </h2>
 
           <div className="space-y-3 flex-1">
-            {question.options.map((option, index) => {
+            {question?.options?.map((option, index) => {
               let buttonClass = 'w-full text-left p-4 rounded-lg border-2 transition-all duration-200 ';
               let circleClass = 'w-6 h-6 rounded-full border-2 flex items-center justify-center text-sm font-semibold ';
               
               if (showAnswerFeedback) {
-                if (index === question.correctAnswer) {
+                if (index === question?.correctAnswer) {
                   buttonClass += 'border-green-500 bg-green-50 dark:bg-green-900/20';
                   circleClass += 'border-green-500 bg-green-500 text-white';
-                } else if (selectedAnswer === index && index !== question.correctAnswer) {
+                } else if (selectedAnswer === index && index !== question?.correctAnswer) {
                   buttonClass += 'border-red-500 bg-red-50 dark:bg-red-900/20';
                   circleClass += 'border-red-500 bg-red-500 text-white';
                 } else {
@@ -449,7 +915,7 @@ const QuizMode: React.FC = () => {
               disabled={selectedAnswer === null || showAnswerFeedback}
               className="w-full sm:w-auto px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 font-semibold min-h-[48px]"
             >
-              {showAnswerFeedback ? 'Aguarde...' : (currentQuestion + 1 === questions.length ? 'Finalizar' : 'Próxima')}
+              {showAnswerFeedback ? 'Aguarde...' : (currentQuestion + 1 === (questions?.length || 0) ? 'Finalizar' : 'Próxima')}
             </button>
           </div>
         </div>
@@ -458,7 +924,7 @@ const QuizMode: React.FC = () => {
   }
 
   if (gameState === 'finished') {
-    const percentage = (score / questions.length) * 100;
+    const percentage = (score / (questions?.length || 1)) * 100;
     
     return (
       <div className="max-w-2xl mx-auto p-4 md:p-6">
@@ -474,8 +940,8 @@ const QuizMode: React.FC = () => {
               Quiz Finalizado!
             </h2>
             
-            <div className={`text-4xl font-bold mb-4 ${getScoreColor(score, questions.length)}`}>
-              {score}/{questions.length}
+            <div className={`text-4xl font-bold mb-4 ${getScoreColor(score, questions?.length || 0)}`}>
+              {score}/{questions?.length || 0}
             </div>
             
             <div className="text-lg text-gray-600 dark:text-gray-300 mb-2">
@@ -634,7 +1100,25 @@ const QuizMode: React.FC = () => {
     );
   }
 
-  return null;
+  return (
+    <div className="max-w-4xl mx-auto p-4">
+      {/* User Input Modal */}
+      <UserInputModal
+        isOpen={showUserModal}
+        onClose={() => setShowUserModal(false)}
+        onSubmit={handleUserSubmit}
+      />
+
+      {/* Leaderboard Modal */}
+      <LeaderboardModal
+        isOpen={showLeaderboard}
+        onClose={() => setShowLeaderboard(false)}
+      />
+
+      {/* Rest of the component content */}
+      <div>Quiz content here...</div>
+    </div>
+  );
 };
 
 export default QuizMode;

@@ -52,14 +52,14 @@ const RefreshButton: React.FC<RefreshButtonProps> = ({ onRefresh }) => {
 
       {/* Notificação Balão */}
       {showNotification && (
-        <div className="absolute bottom-full right-0 mb-2 w-64 bg-orange-600 text-white text-sm rounded-lg shadow-lg p-3 animate-in slide-in-from-bottom-2 duration-300">
+        <div className="absolute top-full right-0 mt-2 w-64 bg-orange-600 text-white text-sm rounded-lg shadow-lg p-3 animate-in slide-in-from-top-2 duration-300">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
             <span className="font-medium">Atualização disponível, clique aqui e atualize agora!</span>
           </div>
           
           {/* Seta do balão */}
-          <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-orange-600"></div>
+          <div className="absolute bottom-full right-4 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-orange-600"></div>
         </div>
       )}
     </div>

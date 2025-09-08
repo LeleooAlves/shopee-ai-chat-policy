@@ -42,8 +42,18 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
       const userMessage = `Análise em lote de ${products.length} produtos:\n\n${productList}`;
       onSendMessage(userMessage, true); // skipAI = true
       
+      // Ativar estado de loading no ChatInterface para mostrar efeito "digitando"
+      if ((window as any).setMultiAnalysisLoading) {
+        (window as any).setMultiAnalysisLoading(true);
+      }
+      
       // Analisar produtos individualmente
       const results = await analyzeMultipleProducts(products);
+      
+      // Desativar estado de loading
+      if ((window as any).setMultiAnalysisLoading) {
+        (window as any).setMultiAnalysisLoading(false);
+      }
       
       // Enviar cada resultado como mensagem separada do bot
       for (const result of results) {
@@ -60,6 +70,10 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
       
     } catch (error) {
       console.error('Erro na análise múltipla:', error);
+      // Desativar estado de loading em caso de erro
+      if ((window as any).setMultiAnalysisLoading) {
+        (window as any).setMultiAnalysisLoading(false);
+      }
       if ((window as any).addBotMessage) {
         (window as any).addBotMessage('Erro ao analisar os produtos. Tente novamente.');
       }
@@ -69,7 +83,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
   };
 
   return (
-    <div className="border-t bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+    <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
       {/* Mode Selector */}
       <div className="flex items-center gap-2 p-3 border-b border-gray-200 dark:border-gray-700">
         <button

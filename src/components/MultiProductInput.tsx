@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Plus, X, Package, Loader2 } from 'lucide-react';
 
 interface Product {
@@ -14,6 +14,8 @@ interface MultiProductInputProps {
 const MultiProductInput: React.FC<MultiProductInputProps> = ({ onAnalyzeProducts, isAnalyzing = false }) => {
   const [products, setProducts] = useState<Product[]>([{ id: '1', name: '' }]);
   const [currentInput, setCurrentInput] = useState('');
+  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
+  const inputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   const addProduct = () => {
     if (currentInput.trim()) {
@@ -37,9 +39,12 @@ const MultiProductInput: React.FC<MultiProductInputProps> = ({ onAnalyzeProducts
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && e.ctrlKey) {
       e.preventDefault();
-      addProduct();
+      handleAnalyze();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      addEmptyProduct();
     }
   };
 
@@ -57,12 +62,22 @@ const MultiProductInput: React.FC<MultiProductInputProps> = ({ onAnalyzeProducts
   };
 
   const addEmptyProduct = () => {
+    const newId = Date.now().toString();
     const newProduct: Product = {
-      id: Date.now().toString(),
+      id: newId,
       name: ''
     };
     setProducts(prev => [...prev, newProduct]);
+    setLastAddedId(newId);
   };
+
+  // Focar no input recém-adicionado
+  useEffect(() => {
+    if (lastAddedId && inputRefs.current[lastAddedId]) {
+      inputRefs.current[lastAddedId]?.focus();
+      setLastAddedId(null);
+    }
+  }, [lastAddedId, products]);
 
   return (
     <div className="w-full space-y-4">
@@ -81,6 +96,7 @@ const MultiProductInput: React.FC<MultiProductInputProps> = ({ onAnalyzeProducts
             </span>
             <input
               type="text"
+              ref={(el) => inputRefs.current[product.id] = el}
               value={product.name}
               onChange={(e) => updateProduct(product.id, e.target.value)}
               onKeyPress={handleKeyPress}
@@ -131,7 +147,7 @@ const MultiProductInput: React.FC<MultiProductInputProps> = ({ onAnalyzeProducts
       </div>
 
       <div className="text-xs text-gray-500 dark:text-gray-400">
-        <p>💡 Dica: Pressione Enter para adicionar rapidamente um produto à lista</p>
+        <p>💡 Dica: Pressione <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Enter</kbd> para adicionar produto ou <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Ctrl+Enter</kbd> para analisar</p>
       </div>
     </div>
   );

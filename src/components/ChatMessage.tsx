@@ -3,16 +3,63 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { User, Bot } from 'lucide-react';
 import AddLinkModal from './AddLinkModal';
+import FeedbackButtons from './FeedbackButtons';
+import { feedbackService } from '@/services/feedbackService';
 
 interface ChatMessageProps {
   message: string;
   isUser: boolean;
   timestamp: Date;
+  messageId?: string;
 }
 
 const getMessageStyle = (message: string) => {
   const lowerMessage = message.toLowerCase();
   
+  // Verificar padrões para análise múltipla (Produto X: nome)
+  if (lowerMessage.includes('produto ') && lowerMessage.includes(':')) {
+    // Extrair o conteúdo após o nome do produto
+    const productAnalysis = message.split('\n\n')[1] || message;
+    const analysisLower = productAnalysis.toLowerCase();
+    
+    if (analysisLower.startsWith('permitido.')) {
+      return {
+        bgColor: 'bg-green-100 dark:bg-green-900/30 border-l-4 border-green-500',
+        textColor: 'text-green-800 dark:text-green-200',
+        label: 'PERMITIDO',
+        labelColor: 'bg-green-500 text-white'
+      };
+    }
+    
+    if (analysisLower.startsWith('proibido.')) {
+      return {
+        bgColor: 'bg-red-100 dark:bg-red-900/30 border-l-4 border-red-500',
+        textColor: 'text-red-800 dark:text-red-200',
+        label: 'PROIBIDO',
+        labelColor: 'bg-red-500 text-white'
+      };
+    }
+    
+    if (analysisLower.startsWith('depende.')) {
+      return {
+        bgColor: 'bg-yellow-100 dark:bg-yellow-900/30 border-l-4 border-yellow-500',
+        textColor: 'text-yellow-800 dark:text-yellow-200',
+        label: 'DEPENDE',
+        labelColor: 'bg-yellow-500 text-white'
+      };
+    }
+    
+    if (analysisLower.startsWith('restrito.')) {
+      return {
+        bgColor: 'bg-orange-100 dark:bg-orange-900/30 border-l-4 border-orange-500',
+        textColor: 'text-orange-800 dark:text-orange-200',
+        label: 'RESTRITO',
+        labelColor: 'bg-orange-500 text-white'
+      };
+    }
+  }
+  
+  // Verificar padrões normais
   if (lowerMessage.startsWith('permitido.')) {
     return {
       bgColor: 'bg-green-100 dark:bg-green-900/30 border-l-4 border-green-500',
@@ -57,10 +104,44 @@ const getMessageStyle = (message: string) => {
   };
 };
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp, messageId }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [categoryName, setCategoryName] = useState('');
   const messageStyle = !isUser ? getMessageStyle(message) : null;
+
+  const handleFeedback = (msgId: string, type: 'positive' | 'negative', comment?: string) => {
+    // Verificar se já existe feedback para evitar duplicação
+    if (feedbackService.hasFeedback(msgId)) {
+      return;
+    }
+    
+    // Capturar pergunta e resposta para feedbacks negativos
+    let userQuestion = '';
+    let aiResponse = message;
+    
+    if (type === 'negative') {
+      // Buscar mensagens do localStorage para encontrar a pergunta correspondente
+      try {
+        const stored = localStorage.getItem('shopee-chat-messages');
+        if (stored) {
+          const messages = JSON.parse(stored);
+          const currentIndex = messages.findIndex((msg: any) => msg.id === msgId);
+          
+          // Encontrar a pergunta do usuário anterior a esta resposta
+          if (currentIndex > 0) {
+            const previousMessage = messages[currentIndex - 1];
+            if (previousMessage && previousMessage.isUser) {
+              userQuestion = previousMessage.text;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao buscar pergunta do usuário:', error);
+      }
+    }
+    
+    feedbackService.addFeedback(msgId, message, type, comment, userQuestion, aiResponse);
+  };
 
   const handleAddLinkClick = (text: string) => {
     // Extrair categoria completa com número e nome (ex: "17.3. SUPLEMENTOS ALIMENTARES")
@@ -163,6 +244,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp })
             }`}>
               {format(timestamp, 'HH:mm', { locale: ptBR })}
             </p>
+            {!isUser && messageId && messageId !== '1' && (
+              <FeedbackButtons
+                messageId={messageId}
+                messageText={message}
+                onFeedback={handleFeedback}
+              />
+            )}
           </div>
         </div>
       </div>

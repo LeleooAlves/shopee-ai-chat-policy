@@ -48,6 +48,7 @@ const saveMessagesToStorage = (messages: Message[]) => {
 const ChatInterface: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>(loadMessagesFromStorage);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMultiAnalysisLoading, setIsMultiAnalysisLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -135,26 +136,29 @@ const ChatInterface: React.FC = () => {
   React.useEffect(() => {
     (window as any).clearShopeeChat = clearChat;
     (window as any).addBotMessage = addBotMessage;
+    (window as any).setMultiAnalysisLoading = setIsMultiAnalysisLoading;
     return () => {
       delete (window as any).clearShopeeChat;
       delete (window as any).addBotMessage;
+      delete (window as any).setMultiAnalysisLoading;
     };
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-800 min-h-0">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800 relative">
       <div className="flex-1 overflow-hidden">
         <ScrollArea ref={scrollAreaRef} className="h-full">
-          <div className="px-3 sm:px-4 pb-4">
+          <div className="px-3 sm:px-4 pb-40">
             {messages.map((message) => (
               <ChatMessage
                 key={message.id}
                 message={message.text}
                 isUser={message.isUser}
                 timestamp={message.timestamp}
+                messageId={message.id}
               />
             ))}
-            {isLoading && (
+            {(isLoading || isMultiAnalysisLoading) && (
               <div className="flex gap-3 max-w-[80%]">
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center">
                   <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
@@ -171,7 +175,7 @@ const ChatInterface: React.FC = () => {
           </div>
         </ScrollArea>
       </div>
-      <div className="flex-shrink-0 border-t dark:border-gray-700 p-3 sm:p-4 pb-safe">
+      <div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 z-50 border-t border-gray-200 dark:border-gray-700">
         <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
       </div>
     </div>
