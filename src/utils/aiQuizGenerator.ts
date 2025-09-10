@@ -10,6 +10,7 @@ export interface AIQuizQuestion {
   category: string;
   explanation: string;
   difficulty: 'easy' | 'medium' | 'hard';
+  isAIGenerated?: boolean;
 }
 
 // Função para gerar perguntas combinando pré-prontas e IA (Gemini 2.5 Pro)

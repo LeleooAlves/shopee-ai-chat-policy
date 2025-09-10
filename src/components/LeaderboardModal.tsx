@@ -28,12 +28,13 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
 }) => {
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedDifficulty, setSelectedDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
 
   useEffect(() => {
     if (isOpen) {
       loadRankings();
     }
-  }, [isOpen]);
+  }, [isOpen, selectedDifficulty]);
 
   const loadRankings = async () => {
     setLoading(true);
@@ -46,6 +47,10 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
       setLoading(false);
     }
   };
+
+  const filteredRankings = rankings
+    .filter(entry => entry.difficulty === selectedDifficulty)
+    .map((entry, index) => ({ ...entry, position: index + 1 }));
 
   const getRankIcon = (position: number) => {
     switch (position) {
@@ -76,30 +81,64 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
           </DialogTitle>
         </DialogHeader>
         
+        {/* Abas de Dificuldade */}
+        <div className="flex gap-2 mb-4 border-b">
+          <button
+            onClick={() => setSelectedDifficulty('easy')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              selectedDifficulty === 'easy'
+                ? 'border-green-500 text-green-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            🟢 Fácil
+          </button>
+          <button
+            onClick={() => setSelectedDifficulty('medium')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              selectedDifficulty === 'medium'
+                ? 'border-yellow-500 text-yellow-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            🟡 Médio
+          </button>
+          <button
+            onClick={() => setSelectedDifficulty('hard')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              selectedDifficulty === 'hard'
+                ? 'border-red-500 text-red-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            🔴 Difícil
+          </button>
+        </div>
+        
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
-          ) : rankings.length === 0 ? (
+          ) : filteredRankings.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <Trophy className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-              <p>Nenhum resultado encontrado ainda.</p>
-              <p className="text-sm">Seja o primeiro a completar o quiz!</p>
+              <p>Nenhum resultado encontrado para esta dificuldade.</p>
+              <p className="text-sm">Seja o primeiro a completar o quiz neste nível!</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {rankings.map((entry) => (
+              {filteredRankings.map((entry, index) => (
                 <div
                   key={`${entry.name}-${entry.date.getTime()}`}
                   className={`flex items-center gap-4 p-3 rounded-lg border ${
-                    entry.position <= 3 
+                    index < 3 
                       ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200' 
                       : 'bg-gray-50 border-gray-200'
                   }`}
                 >
                   <div className="flex-shrink-0">
-                    {getRankIcon(entry.position)}
+                    {getRankIcon(index + 1)}
                   </div>
                   
                   <div className="flex-1 min-w-0">
@@ -120,12 +159,6 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                         <Clock className="w-3 h-3" />
                         {formatTime(entry.timeUsed)}
                       </span>
-                      <Badge 
-                        variant={entry.difficulty === 'easy' ? 'secondary' : entry.difficulty === 'medium' ? 'default' : 'destructive'} 
-                        className="text-xs"
-                      >
-                        {entry.difficulty === 'easy' ? '🟢 Fácil' : entry.difficulty === 'medium' ? '🟡 Médio' : '🔴 Difícil'}
-                      </Badge>
                       <span className="text-xs">
                         {entry.date.toLocaleDateString('pt-BR')}
                       </span>

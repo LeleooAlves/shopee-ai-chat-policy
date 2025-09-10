@@ -59,14 +59,69 @@ const AnalyticsMode: React.FC = () => {
     isRunning: boolean;
     results: { feedback: any; quiz: any } | null;
   }>({ isRunning: false, results: null });
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [tasks, setTasks] = useState<{id: string; name: string; description?: string}[]>([]);
+  const [editingTask, setEditingTask] = useState<{id: string; name: string; description?: string} | null>(null);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskName, setTaskName] = useState('');
+  const [taskDescription, setTaskDescription] = useState('');
 
   useEffect(() => {
     if (!isAuthenticated) {
       setShowAuthModal(true);
     } else {
       loadAnalytics();
+      loadTasks();
     }
   }, [isAuthenticated]);
+
+  // Carregar tarefas do Supabase
+  const loadTasks = async () => {
+    try {
+      const tasksData = await supabaseService.getTasks();
+      setTasks(tasksData);
+    } catch (error) {
+      console.error('Erro ao carregar tarefas:', error);
+    }
+  };
+
+  // Salvar tarefa (adicionar ou editar)
+  const handleSaveTask = async () => {
+    if (!taskName.trim()) return;
+    
+    try {
+      if (editingTask) {
+        await supabaseService.updateTask(editingTask.id, taskName.trim(), taskDescription.trim());
+        toast.success('Tarefa atualizada com sucesso!');
+      } else {
+        await supabaseService.createTask(taskName.trim(), taskDescription.trim());
+        toast.success('Tarefa criada com sucesso!');
+      }
+      
+      setShowTaskModal(false);
+      setEditingTask(null);
+      setTaskName('');
+      setTaskDescription('');
+      loadTasks();
+    } catch (error) {
+      console.error('Erro ao salvar tarefa:', error);
+      toast.error('Erro ao salvar tarefa');
+    }
+  };
+
+  // Deletar tarefa
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta tarefa?')) return;
+    
+    try {
+      await supabaseService.deleteTask(taskId);
+      toast.success('Tarefa excluída com sucesso!');
+      loadTasks();
+    } catch (error) {
+      console.error('Erro ao deletar tarefa:', error);
+      toast.error('Erro ao excluir tarefa');
+    }
+  };
 
   const handleDeleteFeedback = async (messageId: string) => {
     try {
@@ -78,8 +133,6 @@ const AnalyticsMode: React.FC = () => {
       toast.error('Erro ao remover feedback');
     }
   };
-
-  const [showClearModal, setShowClearModal] = useState(false);
 
   const handleClearAllAnalytics = async () => {
     setShowClearModal(false);
@@ -312,9 +365,11 @@ const AnalyticsMode: React.FC = () => {
       </div>
 
       <Tabs defaultValue="quiz" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="quiz">Análise do Quiz</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="quiz">Quiz Analytics</TabsTrigger>
+          <TabsTrigger value="admin">Administração</TabsTrigger>
           <TabsTrigger value="feedback">Feedback dos Usuários</TabsTrigger>
+          <TabsTrigger value="tasks">Gerenciar Tarefas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="quiz" className="space-y-4">
@@ -528,43 +583,87 @@ const AnalyticsMode: React.FC = () => {
             </Card>
           </div>
         </TabsContent>
+
+        <TabsContent value="tasks" className="space-y-4 h-full">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
+            <h2 className="text-xl sm:text-2xl font-bold">Gerenciar Tarefas Principais</h2>
+            <Button 
+              onClick={() => {
+                setEditingTask(null);
+                setTaskName('');
+                setTaskDescription('');
+                setShowTaskModal(true);
+              }}
+              className="w-full sm:w-auto"
+            >
+              Adicionar Tarefa
+            </Button>
+          </div>
+          
+          <Card className="h-[calc(100vh-280px)] flex flex-col">
+            <CardHeader className="flex-shrink-0">
+              <CardTitle className="text-lg sm:text-xl">Tarefas Cadastradas</CardTitle>
+              <CardDescription className="text-sm">
+                Gerencie as tarefas principais disponíveis para seleção no quiz
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-hidden">
+              <div className="h-full overflow-y-auto space-y-2 pr-2">
+                {tasks.length === 0 ? (
+                  <div className="flex items-center justify-center h-32">
+                    <p className="text-gray-500 text-center">Nenhuma tarefa cadastrada</p>
+                  </div>
+                ) : (
+                  tasks.map(task => (
+                    <div key={task.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium truncate">{task.name}</h4>
+                        {task.description && (
+                          <p className="text-sm text-gray-600 dark:text-gray-400 break-words">{task.description}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingTask(task);
+                            setTaskName(task.name);
+                            setTaskDescription(task.description || '');
+                            setShowTaskModal(true);
+                          }}
+                          className="flex-1 sm:flex-none"
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="flex-1 sm:flex-none"
+                        >
+                          Excluir
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Modal de Confirmação para Zerar Dashboard */}
       {showClearModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Zerar Dashboard
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Esta ação não pode ser desfeita
-                </p>
-              </div>
-            </div>
-            
-            <div className="mb-6">
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Tem certeza que deseja <strong>zerar TODOS os dados</strong> do dashboard?
-              </p>
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                <p className="text-sm text-red-800 dark:text-red-200">
-                  <strong>Dados que serão removidos:</strong>
-                </p>
-                <ul className="text-sm text-red-700 dark:text-red-300 mt-2 space-y-1">
-                  <li>• Todos os feedbacks (positivos e negativos)</li>
-                  <li>• Histórico de mensagens do chat</li>
-                  <li>• Dados de analytics armazenados</li>
-                  <li>• Informações do banco de dados Supabase</li>
-                </ul>
-              </div>
-            </div>
-
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+              Confirmar Limpeza
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Tem certeza que deseja zerar todos os dados de analytics? Esta ação não pode ser desfeita.
+            </p>
             <div className="flex gap-3 justify-end">
               <Button
                 variant="outline"
@@ -579,6 +678,64 @@ const AnalyticsMode: React.FC = () => {
               >
                 <Trash2 className="w-4 h-4" />
                 Confirmar e Zerar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Adicionar/Editar Tarefa */}
+      {showTaskModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+              {editingTask ? 'Editar Tarefa' : 'Adicionar Nova Tarefa'}
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Nome da Tarefa
+                </label>
+                <input
+                  type="text"
+                  value={taskName}
+                  onChange={(e) => setTaskName(e.target.value)}
+                  placeholder="Nome da tarefa"
+                  className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Descrição (opcional)
+                </label>
+                <textarea
+                  value={taskDescription}
+                  onChange={(e) => setTaskDescription(e.target.value)}
+                  placeholder="Descrição da tarefa"
+                  rows={3}
+                  className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 justify-end mt-6">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowTaskModal(false);
+                  setEditingTask(null);
+                  setTaskName('');
+                  setTaskDescription('');
+                }}
+                className="w-full sm:w-auto order-2 sm:order-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSaveTask}
+                disabled={!taskName.trim()}
+                className="bg-orange-600 hover:bg-orange-700 w-full sm:w-auto order-1 sm:order-2"
+              >
+                {editingTask ? 'Salvar' : 'Adicionar'}
               </Button>
             </div>
           </div>

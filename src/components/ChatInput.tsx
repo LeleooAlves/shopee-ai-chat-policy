@@ -85,50 +85,52 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
   return (
     <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
       {/* Mode Selector */}
-      <div className="flex items-center gap-2 p-3 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-1 sm:gap-2 p-2 sm:p-3 border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={() => setInputMode('text')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors duration-200 ${
+          className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm transition-colors duration-200 ${
             inputMode === 'text'
               ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
               : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50 dark:text-gray-300 dark:hover:text-orange-400 dark:hover:bg-gray-700'
           }`}
         >
-          <Send className="w-4 h-4" />
-          Texto
+          <Send className="w-3 sm:w-4 h-3 sm:h-4" />
+          <span className="hidden sm:inline">Texto</span>
+          <span className="sm:hidden">Chat</span>
         </button>
         
         <button
           onClick={() => setInputMode('multi')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors duration-200 ${
+          className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm transition-colors duration-200 ${
             inputMode === 'multi'
               ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
               : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50 dark:text-gray-300 dark:hover:text-orange-400 dark:hover:bg-gray-700'
           }`}
         >
-          <Package className="w-4 h-4" />
-          Múltiplos
+          <Package className="w-3 sm:w-4 h-3 sm:h-4" />
+          <span className="hidden sm:inline">Múltiplos</span>
+          <span className="sm:hidden">Lote</span>
         </button>
       </div>
 
       {/* Input Area */}
-      <div className="p-4">
+      <div className="p-2 sm:p-4">
         {inputMode === 'text' && (
           <form onSubmit={handleSubmit}>
-            <div className="flex gap-3 items-end">
+            <div className="flex gap-2 sm:gap-3 items-end">
               <Textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Digite sua pergunta sobre a política de proibidos da Shopee..."
-                className="min-h-[50px] max-h-[120px] resize-none flex-1"
+                placeholder="Digite sua pergunta..."
+                className="min-h-[40px] sm:min-h-[50px] max-h-[100px] sm:max-h-[120px] resize-none flex-1 text-sm sm:text-base"
                 disabled={isLoading}
               />
               <Button 
                 type="submit" 
                 size="icon"
                 disabled={!message.trim() || isLoading}
-                className="h-[50px] w-[50px] flex-shrink-0 bg-orange-500 hover:bg-orange-600"
+                className="h-[40px] sm:h-[50px] w-[40px] sm:w-[50px] flex-shrink-0 bg-orange-500 hover:bg-orange-600"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />

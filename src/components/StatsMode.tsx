@@ -190,44 +190,44 @@ const StatsMode: React.FC = () => {
         </div>
 
         {/* Cards de Estatísticas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Total de Consultas</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.totalQueries}</p>
-            </div>
-            <Package className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 sm:p-4 lg:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-300 text-[10px] sm:text-xs lg:text-sm">Total de Consultas</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.totalQueries}</p>
+              </div>
+              <Package className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-blue-600 hidden sm:block" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Sessões de Usuário</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.userSessions}</p>
-            </div>
-            <Users className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 sm:p-4 lg:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-300 text-[10px] sm:text-xs lg:text-sm">Sessões</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.userSessions}</p>
+              </div>
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-green-600 hidden sm:block" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Tempo Médio</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.averageResponseTime}ms</p>
-            </div>
-            <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 sm:p-4 lg:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-300 text-[10px] sm:text-xs lg:text-sm">Tempo Médio</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.averageResponseTime}ms</p>
+              </div>
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-purple-600 hidden sm:block" />
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm">Produtos Únicos</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.mostSearchedProducts.length}</p>
-            </div>
-            <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-3 sm:p-4 lg:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-gray-600 dark:text-gray-300 text-[10px] sm:text-xs lg:text-sm">Produtos</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.mostSearchedProducts.length}</p>
+              </div>
+              <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-orange-600 hidden sm:block" />
           </div>
         </div>
       </div>

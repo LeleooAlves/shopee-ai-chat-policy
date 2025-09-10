@@ -191,6 +191,107 @@ Onde CLASSIFICAÇÃO deve ser exatamente uma das opções: PERMITIDO, PROIBIDO, 
   }
 };
 
+export const generateQuizQuestions = async (difficulty: 'easy' | 'medium' | 'hard'): Promise<any[]> => {
+  try {
+    // Carregar políticas do arquivo JSON
+    const politicasTexto = politicasData.categorias
+      .filter(cat => cat.conteudo && cat.conteudo.trim() !== '--------------------------------------------------------------------------------')
+      .map(cat => `${cat.nome}: ${cat.conteudo}`)
+      .join('\n\n');
+
+    const prompt = `Você é um especialista nas políticas de produtos proibidos da Shopee.
+    
+    POLÍTICAS DA SHOPEE:
+    ${politicasTexto}
+    
+    Crie 10 perguntas de quiz EXCLUSIVAMENTE sobre as políticas de produtos proibidos da Shopee listadas acima.
+    
+    REGRAS OBRIGATÓRIAS:
+    1. Use APENAS informações das políticas fornecidas
+    2. NÃO crie perguntas sobre temas gerais (privacidade, práticas comerciais, etc.)
+    3. Foque em produtos PROIBIDOS, PERMITIDOS, RESTRITOS ou que DEPENDEM de condições
+    4. Cada pergunta deve ser sobre um produto específico mencionado nas políticas
+    
+    Nível de dificuldade: ${difficulty === 'easy' ? 'FÁCIL' : difficulty === 'medium' ? 'MÉDIO' : 'DIFÍCIL'}
+    
+    ${difficulty === 'easy' ? 
+      'Para nível FÁCIL: Perguntas diretas sobre itens claramente proibidos ou permitidos' :
+      difficulty === 'medium' ?
+      'Para nível MÉDIO: Perguntas sobre casos que dependem de condições ou requerem documentação' :
+      'Para nível DIFÍCIL: Perguntas sobre casos específicos, exceções e situações complexas'
+    }
+    
+    FORMATO OBRIGATÓRIO:
+    - Pergunta: "[Nome do produto] deve ser classificado como:"
+    - Opções: ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"]
+    - Apenas uma resposta correta baseada nas políticas
+    
+    Retorne EXATAMENTE neste formato JSON (array de objetos):
+    [
+      {
+        "question": "Fogos de artifício devem ser classificados como:",
+        "options": ["PERMITIDO", "PROIBIDO", "RESTRITO", "DEPENDE"],
+        "correctAnswer": 1,
+        "category": "EXPLOSIVOS",
+        "explanation": "Fogos de artifício são proibidos segundo a política."
+      }
+    ]
+    
+    Gere exatamente 10 perguntas variadas sobre PRODUTOS das políticas.`;
+
+    const model = genAI.getGenerativeModel({ 
+      model: MODEL,
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+      }
+    });
+
+    const result = await model.generateContent(prompt);
+    const response = result.response.text();
+    
+    // Extrair JSON da resposta
+    const jsonMatch = response.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if (jsonMatch) {
+      const questions = JSON.parse(jsonMatch[0]);
+      
+      // Validar e garantir que são 10 questões
+      const validQuestions = questions
+        .filter((q: any) => q.question && q.options && q.options.length === 4)
+        .slice(0, 10);
+      
+      // Se não tiver 10 questões válidas, completar com questões do arquivo
+      if (validQuestions.length < 10) {
+        const { quizQuestions } = await import('../data/quizQuestions');
+        const additionalQuestions = quizQuestions
+          .slice(0, 10 - validQuestions.length)
+          .map((q, index) => ({
+            id: `fallback_${index}`,
+            question: q.question,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            category: q.category,
+            explanation: q.explanation
+          }));
+        validQuestions.push(...additionalQuestions);
+      }
+      
+      // Formatar as questões
+      return validQuestions.map((q: any, index: number) => ({
+        id: `${Date.now()}_${index}`,
+        question: q.question || 'Pergunta não disponível',
+        options: q.options || ['PERMITIDO', 'PROIBIDO', 'RESTRITO', 'DEPENDE'],
+        correctAnswer: q.correctAnswer || 0,
+        category: q.category || 'Produtos Proibidos',
+        explanation: q.explanation || 'Conforme as políticas da Shopee'
+      }));
+    }
+  } catch (error) {
+    console.error('Erro ao gerar perguntas do quiz:', error);
+    throw new Error('Desculpe, ocorreu um erro ao processar as perguntas do quiz. Tente novamente.');
+  }
+};
+
 export const sendMessageToGemini = async (message: string): Promise<string> => {
   try {
     const trimmed = message.trim();
