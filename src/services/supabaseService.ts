@@ -145,14 +145,16 @@ class SupabaseService {
           groupedByDifficulty.set(difficulty, []);
         }
         groupedByDifficulty.get(difficulty)!.push({
-          name: `${item.first_name} ${item.last_name}`,
-          team: item.team_name,
+          firstName: item.first_name,
+          lastName: item.last_name,
+          teamName: item.team_name,
           score: item.final_score,
           correctAnswers: item.score || 0,
           totalQuestions: item.total_questions || 10,
           timeUsed: item.time_used,
           difficulty: difficulty,
-          date: new Date(item.created_at)
+          date: new Date(item.created_at),
+          id: item.id
         });
       });
 

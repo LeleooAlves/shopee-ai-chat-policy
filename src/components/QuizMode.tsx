@@ -208,7 +208,7 @@ const QuizMode: React.FC = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [teamName, setTeamName] = useState('');
-  const [availableTasks, setAvailableTasks] = useState<{id: string; name: string}[]>([]);
+  const [tasks, setTasks] = useState<{ id: string; name: string; description?: string }[]>([]);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [newTaskName, setNewTaskName] = useState('');
   const [usedQuestionIds, setUsedQuestionIds] = useState<Set<string>>(new Set());
@@ -261,7 +261,7 @@ const QuizMode: React.FC = () => {
   const loadTasks = async () => {
     try {
       const tasks = await supabaseService.getTasks();
-      setAvailableTasks(tasks);
+      setTasks(tasks);
     } catch (error) {
       console.error('Erro ao carregar tarefas:', error);
     }
@@ -477,15 +477,15 @@ const QuizMode: React.FC = () => {
 
   const resetQuiz = () => {
     setGameState('menu');
+    setQuestions([]);
     setCurrentQuestion(0);
-    setScore(0);
-    setTimeElapsed(0);
     setSelectedAnswer(null);
-    setShowResult(false);
+    setScore(0);
     setUserAnswers([]);
-    setFirstName('');
-    setLastName('');
-    setTeamName('');
+    setShowResult(false);
+    setShowAnswerFeedback(false);
+    setTimeElapsed(0);
+    // Manter as questões usadas para evitar repetição
   };
 
   const cancelExit = () => {
@@ -559,7 +559,7 @@ const QuizMode: React.FC = () => {
                         className="flex-1 px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                       >
                         <option value="">Selecione uma tarefa</option>
-                        {availableTasks.map(task => (
+                        {tasks.map(task => (
                           <option key={task.id} value={task.name}>{task.name}</option>
                         ))}
                       </select>
@@ -624,7 +624,7 @@ const QuizMode: React.FC = () => {
                     </div>
                     <button
                       onClick={handleStartQuiz}
-                      disabled={isGeneratingQuestions}
+                      disabled={isGeneratingQuestions || !firstName.trim() || !lastName.trim() || !teamName.trim()}
                       className="w-full bg-orange-600 text-white py-2 sm:py-3 px-3 sm:px-4 rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 font-semibold text-sm"
                     >
                       {isGeneratingQuestions ? 'Preparando Quiz...' : 'Começar Quiz'}

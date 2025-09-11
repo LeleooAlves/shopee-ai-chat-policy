@@ -14,7 +14,7 @@ export interface AIQuizQuestion {
 }
 
 // Função para gerar perguntas combinando pré-prontas e IA (Gemini 2.5 Pro)
-export const generateAIQuizQuestions = async (count: number = 10, difficulty: 'easy' | 'medium' | 'hard' = 'medium'): Promise<AIQuizQuestion[]> => {
+export const generateAIQuizQuestions = async (count: number = 10, difficulty: 'easy' | 'medium' | 'hard' = 'medium', usedIds: Set<string> = new Set()): Promise<AIQuizQuestion[]> => {
   const questions: AIQuizQuestion[] = [];
   
   // Dividir entre perguntas pré-prontas (40%) e Gemini 2.5 Pro (60%)
@@ -22,11 +22,17 @@ export const generateAIQuizQuestions = async (count: number = 10, difficulty: 'e
   const geminiCount = count - preBuiltCount;
   
   try {
-    // Adicionar perguntas pré-prontas
-    const preBuiltQuestions = getRandomQuestions(preBuiltCount);
-    preBuiltQuestions.forEach((q, index) => {
+    // Filtrar perguntas pré-prontas que não foram usadas
+    const availablePreBuilt = getRandomQuestions(preBuiltCount * 3) // Buscar mais para ter opções
+      .filter(q => !usedIds.has(`pre-${q.id}`));
+    
+    // Selecionar apenas as necessárias
+    const selectedPreBuilt = availablePreBuilt.slice(0, preBuiltCount);
+    
+    selectedPreBuilt.forEach((q, index) => {
+      const questionId = `pre-${q.id}`;
       questions.push({
-        id: `pre-${q.id}`,
+        id: questionId,
         question: q.question,
         options: q.options,
         correctAnswer: q.correctAnswer,
@@ -36,16 +42,27 @@ export const generateAIQuizQuestions = async (count: number = 10, difficulty: 'e
       });
     });
     
-    // Gerar perguntas com Gemini 2.5 Pro
+    // Gerar perguntas com Gemini 2.5 Pro (sempre únicas por serem geradas dinamicamente)
     const geminiQuestions = await generateQuizWithGemini(geminiCount, difficulty);
-    questions.push(...geminiQuestions);
+    
+    // Adicionar timestamp para garantir IDs únicos do Gemini
+    const uniqueGeminiQuestions = geminiQuestions.map((q, index) => ({
+      ...q,
+      id: `gemini-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`
+    }));
+    
+    questions.push(...uniqueGeminiQuestions);
     
   } catch (error) {
     console.error('Erro ao gerar perguntas com Gemini:', error);
     
-    // Fallback: usar apenas perguntas pré-prontas se Gemini falhar
-    const fallbackQuestions = getRandomQuestions(count);
-    return fallbackQuestions.map((q, index) => ({
+    // Fallback: usar apenas perguntas pré-prontas não usadas se Gemini falhar
+    const availableFallback = getRandomQuestions(count * 2)
+      .filter(q => !usedIds.has(`fallback-${q.id}`));
+    
+    const selectedFallback = availableFallback.slice(0, count);
+    
+    return selectedFallback.map((q, index) => ({
       id: `fallback-${q.id}`,
       question: q.question,
       options: q.options,

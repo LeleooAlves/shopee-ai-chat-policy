@@ -65,6 +65,11 @@ const AnalyticsMode: React.FC = () => {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [taskName, setTaskName] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
+  const [showDeleteTaskModal, setShowDeleteTaskModal] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -110,16 +115,24 @@ const AnalyticsMode: React.FC = () => {
   };
 
   // Deletar tarefa
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta tarefa?')) return;
+  const handleDeleteTask = (taskId: string) => {
+    setTaskToDelete(taskId);
+    setShowDeleteTaskModal(true);
+  };
+
+  const confirmDeleteTask = async () => {
+    if (!taskToDelete) return;
     
     try {
-      await supabaseService.deleteTask(taskId);
+      await supabaseService.deleteTask(taskToDelete);
       toast.success('Tarefa excluída com sucesso!');
       loadTasks();
     } catch (error) {
       console.error('Erro ao deletar tarefa:', error);
       toast.error('Erro ao excluir tarefa');
+    } finally {
+      setShowDeleteTaskModal(false);
+      setTaskToDelete(null);
     }
   };
 
@@ -134,18 +147,32 @@ const AnalyticsMode: React.FC = () => {
     }
   };
 
-  const handleClearAllAnalytics = async () => {
-    setShowClearModal(false);
+  const handlePasswordSubmit = async () => {
+    if (password !== 'dadosadmin123') {
+      setPasswordError('Senha incorreta!');
+      return;
+    }
+    
+    setPasswordError('');
+    setShowPasswordModal(false);
+    setPassword('');
     
     try {
+      // Limpar dados locais
       await feedbackService.clearAllAnalytics();
+      localStorage.removeItem('quizRanking');
+      localStorage.removeItem('quiz-results');
+      localStorage.removeItem('shopee-chat-messages');
+      
+      // Limpar dados do Supabase
+      await supabaseService.clearAllAnalytics();
       
       // Recarregar todas as estatísticas
       loadAnalytics();
       loadQuizStats();
       loadChatStats();
       
-      toast.success('Todos os dados de analytics foram removidos!');
+      toast.success('Todos os dados de analytics foram removidos do sistema e banco de dados!');
     } catch (error) {
       console.error('Erro ao zerar analytics:', error);
       toast.error('Erro ao zerar dados de analytics');
@@ -315,114 +342,100 @@ const AnalyticsMode: React.FC = () => {
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex items-center gap-3 mb-6">
-        <TrendingUp className="w-8 h-8 text-orange-500" />
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics Dashboard</h1>
-          <p className="text-gray-600 dark:text-gray-400">Análise completa de uso e performance</p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="h-screen flex flex-col">
+        {/* Header fixo */}
+        <div className="flex-shrink-0 p-3 sm:p-4 lg:p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="flex-1">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
+                Analytics Dashboard
+              </h1>
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+                Visualize dados de uso, performance e feedback dos usuários
+              </p>
+            </div>
+            <div className="flex-shrink-0">
+              <Button
+                onClick={() => setShowPasswordModal(true)}
+                variant="destructive"
+                size="default"
+                className="flex items-center gap-2 text-sm sm:text-base px-4 py-2"
+              >
+                <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                Zerar Analytics
+              </Button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Quizzes Realizados</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{quizStats?.totalQuizzes || 0}</div>
-            <p className="text-xs text-muted-foreground">Score médio: {quizStats?.averageScore?.toFixed(1) || 0}</p>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Feedback Positivo</CardTitle>
-            <ThumbsUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {feedbackStats?.positive || 0}
+        {/* Container principal com scroll */}
+        <div className="flex-1 overflow-hidden">
+          <Tabs defaultValue="quiz" className="h-full flex flex-col">
+            {/* Abas fixas */}
+            <div className="flex-shrink-0 px-3 sm:px-4 lg:px-6 pt-3 sm:pt-4 bg-white dark:bg-gray-800">
+              <TabsList className="grid w-full grid-cols-3 gap-1 sm:gap-0 h-auto">
+                <TabsTrigger value="quiz" className="text-xs sm:text-sm px-2 sm:px-4 py-2">
+                  <span className="hidden sm:inline">Quiz Analytics</span>
+                  <span className="sm:hidden">Quiz</span>
+                </TabsTrigger>
+                <TabsTrigger value="feedback" className="text-xs sm:text-sm px-2 sm:px-4 py-2">
+                  <span className="hidden sm:inline">Feedback dos Usuários</span>
+                  <span className="sm:hidden">Feedback</span>
+                </TabsTrigger>
+                <TabsTrigger value="tasks" className="text-xs sm:text-sm px-2 sm:px-4 py-2">
+                  <span className="hidden sm:inline">Gerenciar Tarefas</span>
+                  <span className="sm:hidden">Tarefas</span>
+                </TabsTrigger>
+              </TabsList>
             </div>
-            <p className="text-xs text-muted-foreground">Total de feedbacks positivos</p>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Feedback Negativo</CardTitle>
-            <ThumbsDown className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {feedbackStats?.negative || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">Total de feedbacks negativos</p>
-          </CardContent>
-        </Card>
-      </div>
+            {/* Conteúdo das abas com scroll */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+              <TabsContent value="quiz" className="space-y-4 sm:space-y-6 mt-0">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm sm:text-base">Distribuição por Dificuldade</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[200px] sm:h-[250px] lg:h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={quizStats.difficultyDistribution}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="difficulty" fontSize={12} />
+                          <YAxis fontSize={12} />
+                          <Tooltip />
+                          <Bar dataKey="count" fill="#f97316" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
 
-      <Tabs defaultValue="quiz" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="quiz">Quiz Analytics</TabsTrigger>
-          <TabsTrigger value="admin">Administração</TabsTrigger>
-          <TabsTrigger value="feedback">Feedback dos Usuários</TabsTrigger>
-          <TabsTrigger value="tasks">Gerenciar Tarefas</TabsTrigger>
-        </TabsList>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm sm:text-base">Performance por Categoria</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[200px] sm:h-[250px] lg:h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={quizStats?.categoryPerformance || []}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="category" fontSize={12} />
+                          <YAxis domain={[0, 100]} fontSize={12} />
+                          <Tooltip formatter={(value) => [`${value}%`, 'Taxa de Acerto']} />
+                          <Bar dataKey="accuracy" fill="#3B82F6" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
 
-        <TabsContent value="quiz" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Distribuição por Dificuldade</CardTitle>
-                <CardDescription>Quizzes realizados por nível</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={quizStats?.difficultyDistribution || []}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="difficulty" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#10B981" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Performance por Categoria</CardTitle>
-                <CardDescription>Taxa de acerto por área</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={quizStats?.categoryPerformance || []}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="category" />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip formatter={(value) => [`${value}%`, 'Taxa de Acerto']} />
-                    <Bar dataKey="accuracy" fill="#3B82F6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="feedback" className="space-y-4">
-          <div className="flex justify-end mb-4">
-            <Button
-              onClick={() => setShowClearModal(true)}
-              variant="destructive"
-              className="flex items-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              Zerar Dashboard
-            </Button>
-          </div>
+              <TabsContent value="feedback" className="space-y-4 sm:space-y-6 mt-0">
           
           <div className="grid grid-cols-1 gap-4">
             <Card>
@@ -501,183 +514,169 @@ const AnalyticsMode: React.FC = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="admin" className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-orange-500" />
-                  Migração de Dados para Supabase
-                </CardTitle>
-                <CardDescription>
-                  Migre dados existentes do localStorage para o banco de dados Supabase
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                    <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
-                      O que será migrado:
-                    </h4>
-                    <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                      <li>• Todos os feedbacks (positivos e negativos) com comentários</li>
-                      <li>• Resultados de quiz e pontuações</li>
-                      <li>• Dados de analytics e estatísticas</li>
-                    </ul>
-                  </div>
 
-                  {migrationStatus.results && (
-                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                      <h4 className="font-medium mb-2">Resultado da Migração:</h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <strong>Feedback:</strong>
-                          <div className="text-green-600">✓ {migrationStatus.results.feedback.success} sucessos</div>
-                          {migrationStatus.results.feedback.errors > 0 && (
-                            <div className="text-red-600">✗ {migrationStatus.results.feedback.errors} erros</div>
-                          )}
-                        </div>
-                        <div>
-                          <strong>Quiz:</strong>
-                          <div className="text-green-600">✓ {migrationStatus.results.quiz.success} sucessos</div>
-                          {migrationStatus.results.quiz.errors > 0 && (
-                            <div className="text-red-600">✗ {migrationStatus.results.quiz.errors} erros</div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handleMigrateData}
-                    disabled={migrationStatus.isRunning}
-                    className="w-full px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium mb-3"
+              <TabsContent value="tasks" className="space-y-4 sm:space-y-6 mt-0">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold">Gerenciar Tarefas Principais</h2>
+                  <Button 
+                    onClick={() => {
+                      setEditingTask(null);
+                      setTaskName('');
+                      setTaskDescription('');
+                      setShowTaskModal(true);
+                    }}
+                    className="w-full sm:w-auto"
                   >
-                    {migrationStatus.isRunning ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Migrando dados...
-                      </div>
-                    ) : (
-                      'Iniciar Migração'
-                    )}
-                  </button>
-
-                  <button
-                    onClick={handleClearAllAnalytics}
-                    disabled={migrationStatus.isRunning}
-                    className="w-full px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <Trash2 className="w-4 h-4" />
-                      Zerar Todos os Analytics
-                    </div>
-                  </button>
-
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    <strong>Nota:</strong> Os dados permanecerão no localStorage como backup. 
-                    A migração pode ser executada múltiplas vezes sem problemas.
-                  </div>
+                    Adicionar Tarefa
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="tasks" className="space-y-4 h-full">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
-            <h2 className="text-xl sm:text-2xl font-bold">Gerenciar Tarefas Principais</h2>
-            <Button 
-              onClick={() => {
-                setEditingTask(null);
-                setTaskName('');
-                setTaskDescription('');
-                setShowTaskModal(true);
-              }}
-              className="w-full sm:w-auto"
-            >
-              Adicionar Tarefa
-            </Button>
-          </div>
-          
-          <Card className="h-[calc(100vh-280px)] flex flex-col">
-            <CardHeader className="flex-shrink-0">
-              <CardTitle className="text-lg sm:text-xl">Tarefas Cadastradas</CardTitle>
-              <CardDescription className="text-sm">
-                Gerencie as tarefas principais disponíveis para seleção no quiz
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-hidden">
-              <div className="h-full overflow-y-auto space-y-2 pr-2">
-                {tasks.length === 0 ? (
-                  <div className="flex items-center justify-center h-32">
-                    <p className="text-gray-500 text-center">Nenhuma tarefa cadastrada</p>
-                  </div>
-                ) : (
-                  tasks.map(task => (
-                    <div key={task.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-3">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium truncate">{task.name}</h4>
-                        {task.description && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 break-words">{task.description}</p>
-                        )}
-                      </div>
-                      <div className="flex gap-2 flex-shrink-0">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditingTask(task);
-                            setTaskName(task.name);
-                            setTaskDescription(task.description || '');
-                            setShowTaskModal(true);
-                          }}
-                          className="flex-1 sm:flex-none"
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="flex-1 sm:flex-none"
-                        >
-                          Excluir
-                        </Button>
-                      </div>
+                
+                <Card className="h-[calc(100vh-400px)] min-h-[300px] flex flex-col">
+                  <CardHeader className="flex-shrink-0 pb-3">
+                    <CardTitle className="text-base sm:text-lg">Tarefas Cadastradas</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">
+                      Gerencie as tarefas principais disponíveis para seleção no quiz
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1 overflow-hidden">
+                    <div className="h-full overflow-y-auto space-y-2 pr-2">
+                      {tasks.length === 0 ? (
+                        <div className="flex items-center justify-center h-32">
+                          <p className="text-gray-500 text-center text-sm">Nenhuma tarefa cadastrada</p>
+                        </div>
+                      ) : (
+                        tasks.map(task => (
+                          <div key={task.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg gap-3">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium truncate text-sm sm:text-base">{task.name}</h4>
+                              {task.description && (
+                                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 break-words">{task.description}</p>
+                              )}
+                            </div>
+                            <div className="flex gap-2 flex-shrink-0">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingTask(task);
+                                  setTaskName(task.name);
+                                  setTaskDescription(task.description || '');
+                                  setShowTaskModal(true);
+                                }}
+                                className="flex-1 sm:flex-none text-xs sm:text-sm"
+                              >
+                                Editar
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="flex-1 sm:flex-none text-xs sm:text-sm"
+                              >
+                                Excluir
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+      </div>
 
-      {/* Modal de Confirmação para Zerar Dashboard */}
-      {showClearModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+      {/* Modal de Confirmação para Deletar Tarefa */}
+      {showDeleteTaskModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 max-w-md w-full">
             <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
-              Confirmar Limpeza
+              Confirmar Exclusão
             </h3>
             <p className="text-gray-600 dark:text-gray-300 mb-6">
-              Tem certeza que deseja zerar todos os dados de analytics? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.
             </p>
-            <div className="flex gap-3 justify-end">
+            <div className="flex flex-col sm:flex-row gap-3 justify-end">
               <Button
                 variant="outline"
-                onClick={() => setShowClearModal(false)}
+                onClick={() => {
+                  setShowDeleteTaskModal(false);
+                  setTaskToDelete(null);
+                }}
+                className="w-full sm:w-auto order-2 sm:order-1"
               >
                 Cancelar
               </Button>
               <Button
                 variant="destructive"
-                onClick={handleClearAllAnalytics}
-                className="flex items-center gap-2"
+                onClick={confirmDeleteTask}
+                className="w-full sm:w-auto order-1 sm:order-2 flex items-center justify-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
-                Confirmar e Zerar
+                Confirmar Exclusão
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Senha para Zerar Analytics */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 sm:p-6 max-w-md w-full">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+              Confirmação de Segurança
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Esta ação irá apagar TODOS os dados de analytics do sistema e banco de dados, incluindo:
+            </p>
+            <ul className="text-sm text-gray-600 dark:text-gray-300 mb-6 list-disc list-inside space-y-1">
+              <li>Ranking global do quiz</li>
+              <li>Feedbacks dos usuários</li>
+              <li>Estatísticas e relatórios</li>
+              <li>Histórico de mensagens</li>
+            </ul>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Digite a senha de administrador:
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError('');
+                }}
+                placeholder="Senha de administrador"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+              />
+              {passwordError && (
+                <p className="text-red-500 text-sm mt-2">{passwordError}</p>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPassword('');
+                  setPasswordError('');
+                }}
+                className="w-full sm:w-auto order-2 sm:order-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handlePasswordSubmit}
+                disabled={!password.trim()}
+                className="w-full sm:w-auto order-1 sm:order-2 flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Confirmar e Zerar Tudo
               </Button>
             </div>
           </div>
