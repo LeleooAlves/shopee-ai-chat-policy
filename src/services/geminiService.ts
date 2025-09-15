@@ -16,6 +16,9 @@ CLASSIFICAÇÕES OBRIGATÓRIAS:
 - DEPENDE: Item tem limites numéricos nas políticas (tamanho, peso, quantidade, etc.) mas a mensagem não especifica essas medidas
 - RESTRITO: Item requer documentação/autorização especial para venda
 
+REGRA CRÍTICA - PRODUTOS FALSIFICADOS/RÉPLICAS:
+Qualquer produto que seja explicitamente falsificado, réplica, imitação ou cópia é SEMPRE PROIBIDO, independentemente da categoria. Palavras-chave que indicam produtos falsificados: "replica", "réplica", "falsificado", "tailandesa", "cópia", "imitação", "fake", "pirata", "clone", "similar", "inspirado em", "tipo", "estilo", entre outras.
+
 TAREFA PRINCIPAL:
 1) ANALISAR o item usando seu conhecimento interno sobre o produto
 2) IDENTIFICAR a categoria MAIS ESPECÍFICA que se aplica ao item
@@ -38,9 +41,12 @@ FORMATOS DE SAÍDA (escolha UM):
 
 REGRAS ESPECÍFICAS:
 - DEPENDE: Use quando a política tem limites numéricos/percentuais mas o usuário NÃO informou essas medidas
-- PROIBIDO: Use quando o item EXCEDE os limites estabelecidos na política
-- PERMITIDO: Use quando o item está DENTRO dos limites estabelecidos na política
+- PROIBIDO: Use quando o item EXCEDE os limites estabelecidos na política OU é explicitamente falsificado/réplica
+- PERMITIDO: Use quando o item está DENTRO dos limites estabelecidos na política E não é falsificado/réplica
 - RESTRITO: Use quando a política menciona "autorização", "documentação complementar", "licença"
+
+PRIORIDADE ABSOLUTA PARA FALSIFICADOS:
+Antes de qualquer análise de categoria ou limite, verifique se o produto contém termos que indiquem falsificação/réplica. Se SIM, classifique imediatamente como PROIBIDO.
 
 RECONHECIMENTO DE MEDIDAS (todas as variações):
 - Comprimento: cm, centímetro, centímetros, mm, milímetro, milímetros, m, metro, metros, pol, polegada, polegadas
@@ -92,7 +98,7 @@ export const analyzeMultipleProducts = async (products: string[]): Promise<Array
       const productName = products[i].trim();
       const productNumber = i + 1;
 
-      const prompt = `POLÍTICAS DA SHOPEE:\n${politicasTexto}\n\nITEM PARA ANÁLISE: "${productName}"\n\nPRIMEIRO: CONSULTE SEU CONHECIMENTO INTERNO sobre o item "${productName}":\n- O que é este produto?\n- Qual sua função principal?\n- Em que categoria se encaixa?\n- Quais são suas características técnicas?\n- Como é usado normalmente?\n\nANÁLISE OBRIGATÓRIA - PRIORIZAÇÃO DE CATEGORIAS:
+      const prompt = `POLÍTICAS DA SHOPEE:\n${politicasTexto}\n\nITEM PARA ANÁLISE: "${productName}"\n\nPRIMEIRO: VERIFICAÇÃO DE FALSIFICAÇÃO/RÉPLICA:\nVerifique se o produto contém termos que indiquem falsificação: "replica", "réplica", "falsificado", "tailandesa", "cópia", "imitação", "fake", "pirata", "clone", "similar", "inspirado em", "tipo", "estilo".\nSe SIM, classifique imediatamente como PROIBIDO.\n\nSEGUNDO: CONSULTE SEU CONHECIMENTO INTERNO sobre o item "${productName}":\n- O que é este produto?\n- Qual sua função principal?\n- Em que categoria se encaixa?\n- Quais são suas características técnicas?\n- Como é usado normalmente?\n\nANÁLISE OBRIGATÓRIA - PRIORIZAÇÃO DE CATEGORIAS:
 1. Com base no seu conhecimento interno, determine a NATUREZA REAL do produto
 2. IDENTIFIQUE TODAS as categorias possíveis que poderiam se aplicar
 3. PRIORIZE a categoria MAIS ESPECÍFICA baseada na função PRINCIPAL:
@@ -136,6 +142,10 @@ EXEMPLOS OBRIGATÓRIOS:
 - "pistola de pintura" = PERMITIDO (ferramenta de trabalho, não é arma)
 - "maçarico" = PROIBIDO (ferramenta inflamável proibida)
 - "câmera escondida na caneta" = PROIBIDO (categoria 7. CÂMERAS E DRONES, não 4.1.1. GRAVADORES)
+- "bolsa replica" = PROIBIDO (produto falsificado/réplica)
+- "perfume tailandês" = PROIBIDO (produto falsificado/réplica)
+- "tênis fake" = PROIBIDO (produto falsificado/réplica)
+- "relógio imitação" = PROIBIDO (produto falsificado/réplica)
 
 ATENÇÃO ESPECIAL: Se o item contém números (50%, 28cm, etc.), NÃO é DEPENDE!
 
@@ -305,7 +315,7 @@ export const sendMessageToGemini = async (message: string): Promise<string> => {
     }
     const politicasTexto = politicasCache;
 
-    const prompt = `POLÍTICAS DA SHOPEE:\n${politicasTexto}\n\nITEM PARA ANÁLISE: "${itemOriginal}"\n\nPRIMEIRO: CONSULTE SEU CONHECIMENTO INTERNO sobre o item "${itemOriginal}":\n- O que é este produto?\n- Qual sua função principal?\n- Em que categoria se encaixa?\n- Quais são suas características técnicas?\n- Como é usado normalmente?\n\nANÁLISE OBRIGATÓRIA - PRIORIZAÇÃO DE CATEGORIAS:
+    const prompt = `POLÍTICAS DA SHOPEE:\n${politicasTexto}\n\nITEM PARA ANÁLISE: "${itemOriginal}"\n\nPRIMEIRO: VERIFICAÇÃO DE FALSIFICAÇÃO/RÉPLICA:\nVerifique se o produto contém termos que indiquem falsificação: "replica", "réplica", "falsificado", "tailandesa", "cópia", "imitação", "fake", "pirata", "clone", "similar", "inspirado em", "tipo", "estilo".\nSe SIM, classifique imediatamente como PROIBIDO.\n\nSEGUNDO: CONSULTE SEU CONHECIMENTO INTERNO sobre o item "${itemOriginal}":\n- O que é este produto?\n- Qual sua função principal?\n- Em que categoria se encaixa?\n- Quais são suas características técnicas?\n- Como é usado normalmente?\n\nANÁLISE OBRIGATÓRIA - PRIORIZAÇÃO DE CATEGORIAS:
 1. Com base no seu conhecimento interno, determine a NATUREZA REAL do produto
 2. IDENTIFIQUE TODAS as categorias possíveis que poderiam se aplicar
 3. PRIORIZE a categoria MAIS ESPECÍFICA baseada na função PRINCIPAL:
