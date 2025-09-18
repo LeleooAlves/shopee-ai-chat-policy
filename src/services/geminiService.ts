@@ -7,7 +7,35 @@ let politicasCache: string | null = null;
 const API_KEY = 'AIzaSyDNm9chlq0QHcFGcCM_2TTxTczqrCC7GFE';
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-const MODEL = 'gemini-2.5-flash';
+// Lista de modelos em ordem de preferência para alternância
+const GEMINI_MODELS = [
+  'gemini-2.5-pro',
+  'gemini-2.5-flash', 
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite'
+];
+
+// Configurações de retry e alternância
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1500; // 1.5 segundos
+const BACKOFF_MULTIPLIER = 1.3;
+
+// Contador para alternância de modelos
+let modelIndex = 0;
+
+// Função para obter o próximo modelo na sequência
+function getNextModel(): string {
+  const model = GEMINI_MODELS[modelIndex % GEMINI_MODELS.length];
+  modelIndex++;
+  console.log(`Usando modelo: ${model} (index: ${modelIndex - 1})`);
+  return model;
+}
+
+// Função para resetar o contador se necessário
+function resetModelRotation(): void {
+  modelIndex = 0;
+}
 const SYSTEM_INSTRUCTION = `Você é um assistente especializado nas políticas de produtos proibidos da Shopee.
 
 CLASSIFICAÇÕES OBRIGATÓRIAS:
@@ -63,22 +91,60 @@ function createModel(name: string) {
   });
 }
 
-async function generateWithModel(modelName: string, prompt: string): Promise<string> {
-  const model = createModel(modelName);
-  const result = await model.generateContent(prompt);
-  const response = await result.response as any;
+async function generateWithModel(modelName: string, prompt: string, retryCount: number = 0, originalModel?: string): Promise<string> {
+  try {
+    const model = createModel(modelName);
+    const result = await model.generateContent(prompt);
+    const response = await result.response as any;
 
-  let text: string = typeof response.text === 'function' ? response.text() : '';
+    let text: string = typeof response.text === 'function' ? response.text() : '';
 
-  if (!text || text.trim() === '') {
-    const candidates = response?.candidates ?? [];
-    if (Array.isArray(candidates) && candidates.length > 0) {
-      const parts = candidates[0]?.content?.parts ?? [];
-      text = parts.map((p: any) => (p?.text ?? '')).join('').trim();
+    if (!text || text.trim() === '') {
+      const candidates = response?.candidates ?? [];
+      if (Array.isArray(candidates) && candidates.length > 0) {
+        const parts = candidates[0]?.content?.parts ?? [];
+        text = parts.map((p: any) => (p?.text ?? '')).join('').trim();
+      }
     }
-  }
 
-  return text?.trim() ?? '';
+    return text?.trim() ?? '';
+  } catch (error: any) {
+    console.error(`Erro com modelo ${modelName} (tentativa ${retryCount + 1}):`, error);
+    
+    // Verificar se é erro 503 (modelo sobrecarregado) ou erro de rede
+    const isRetryableError = 
+      error?.message?.includes('503') || 
+      error?.message?.includes('overloaded') ||
+      error?.message?.includes('Service Unavailable') ||
+      error?.message?.includes('network') ||
+      error?.message?.includes('timeout') ||
+      error?.message?.includes('429'); // Rate limit
+    
+    if (isRetryableError && retryCount < MAX_RETRIES) {
+      // Tentar com o próximo modelo na rotação
+      const nextModel = getNextModel();
+      const delayTime = RETRY_DELAY * Math.pow(BACKOFF_MULTIPLIER, retryCount);
+      
+      console.log(`Modelo ${modelName} sobrecarregado. Tentando com ${nextModel} após ${delayTime}ms...`);
+      await delay(delayTime);
+      
+      return generateWithModel(nextModel, prompt, retryCount + 1, originalModel || modelName);
+    }
+    
+    // Se todos os retries falharam, lançar erro
+    throw error;
+  }
+}
+
+// Função auxiliar para delay
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Função para gerar conteúdo com modelo rotativo
+async function generateWithRotatingModel(prompt: string): Promise<string> {
+  const selectedModel = getNextModel();
+  return generateWithModel(selectedModel, prompt);
 }
 
 export const analyzeMultipleProducts = async (products: string[]): Promise<Array<{productNumber: number, productName: string, analysis: string}>> => {
@@ -159,7 +225,7 @@ Responda OBRIGATORIAMENTE no formato:
 
 Onde CLASSIFICAÇÃO deve ser exatamente uma das opções: PERMITIDO, PROIBIDO, DEPENDE, RESTRITO`;
 
-      const responseText = await generateWithModel(MODEL, prompt);
+      const responseText = await generateWithRotatingModel(prompt);
 
       // Sanitização e validação da resposta
       let finalResponse = responseText;
@@ -249,14 +315,18 @@ export const generateQuizQuestions = async (difficulty: 'easy' | 'medium' | 'har
     
     Gere exatamente 10 perguntas variadas sobre PRODUTOS das políticas.`;
 
+
+    // Usar modelo rotativo para geração de quiz
+    const selectedModel = getNextModel();
     const model = genAI.getGenerativeModel({ 
-      model: MODEL,
+      model: selectedModel,
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 2048,
       }
     });
 
+    console.log(`Gerando quiz com modelo: ${selectedModel}`);
     const result = await model.generateContent(prompt);
     const response = result.response.text();
     
@@ -361,7 +431,7 @@ Responda OBRIGATORIAMENTE no formato:
 
 Onde CLASSIFICAÇÃO deve ser exatamente uma das opções: PERMITIDO, PROIBIDO, DEPENDE, RESTRITO`;
 
-    const responseText = await generateWithModel(MODEL, prompt);
+    const responseText = await generateWithRotatingModel(prompt);
 
     // Sanitização e validação da resposta
     if (responseText) {

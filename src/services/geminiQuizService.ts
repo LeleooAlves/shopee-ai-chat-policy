@@ -4,8 +4,27 @@ import politicasData from '../data/PoliticasShopee.json';
 const API_KEY = 'AIzaSyDNm9chlq0QHcFGcCM_2TTxTczqrCC7GFE';
 const genAI = new GoogleGenerativeAI(API_KEY);
 
-// Usar Gemini 2.5 Pro especificamente para o quiz
-const QUIZ_MODEL = 'gemini-2.5-pro';
+// Lista de modelos para quiz em ordem de preferência
+const QUIZ_MODELS = [
+  'gemini-2.5-pro',
+  'gemini-2.5-flash', 
+  'gemini-2.5-flash-lite',
+  'gemini-1.5-pro',
+  'gemini-1.5-flash',
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite'
+];
+
+// Contador para alternância de modelos do quiz
+let quizModelIndex = 0;
+
+// Função para obter o próximo modelo do quiz
+function getNextQuizModel(): string {
+  const model = QUIZ_MODELS[quizModelIndex % QUIZ_MODELS.length];
+  quizModelIndex++;
+  console.log(`Usando modelo para quiz: ${model} (index: ${quizModelIndex - 1})`);
+  return model;
+}
 
 const QUIZ_SYSTEM_INSTRUCTION = `Você é um especialista em políticas da Shopee responsável por criar perguntas de quiz educativas.
 
@@ -43,11 +62,46 @@ CATEGORIAS PARA FOCAR:
 - Ferramentas (especificações técnicas)
 - Bebidas e alimentos (percentuais, aditivos)`;
 
-function createQuizModel() {
+function createQuizModel(modelName: string) {
   return genAI.getGenerativeModel({
-    model: QUIZ_MODEL,
+    model: modelName,
     systemInstruction: QUIZ_SYSTEM_INSTRUCTION,
   });
+}
+
+// Função auxiliar para delay no quiz
+function delayQuiz(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Função para gerar conteúdo com fallback para quiz
+async function generateQuizWithFallback(prompt: string, retryCount: number = 0): Promise<any> {
+  const selectedModel = getNextQuizModel();
+  
+  try {
+    const model = createQuizModel(selectedModel);
+    const result = await model.generateContent(prompt);
+    return await result.response;
+  } catch (error: any) {
+    console.error(`Erro com modelo de quiz ${selectedModel} (tentativa ${retryCount + 1}):`, error);
+    
+    const isRetryableError = 
+      error?.message?.includes('503') || 
+      error?.message?.includes('overloaded') ||
+      error?.message?.includes('Service Unavailable') ||
+      error?.message?.includes('network') ||
+      error?.message?.includes('timeout') ||
+      error?.message?.includes('429');
+    
+    if (isRetryableError && retryCount < 3) {
+      const delayTime = 1500 * Math.pow(1.3, retryCount);
+      console.log(`Modelo ${selectedModel} sobrecarregado. Tentando próximo modelo após ${delayTime}ms...`);
+      await delayQuiz(delayTime);
+      return generateQuizWithFallback(prompt, retryCount + 1);
+    }
+    
+    throw error;
+  }
 }
 
 export interface AIQuizQuestion {
@@ -62,7 +116,6 @@ export interface AIQuizQuestion {
 
 export const generateQuizWithGemini = async (count: number = 5, difficulty: 'easy' | 'medium' | 'hard' = 'medium'): Promise<AIQuizQuestion[]> => {
   try {
-    const model = createQuizModel();
     
     // Preparar contexto das políticas
     const politicasTexto = politicasData.categorias
@@ -107,8 +160,7 @@ FORMATO DE SAÍDA (JSON):
 
 IMPORTANTE: Responda APENAS com o JSON válido, sem texto adicional.`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = await generateQuizWithFallback(prompt);
     let text = response.text();
 
     // Limpar possível markdown do JSON
