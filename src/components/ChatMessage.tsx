@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { User, Bot } from 'lucide-react';
+import { User, Bot, Volume2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import AddLinkModal from './AddLinkModal';
 import FeedbackButtons from './FeedbackButtons';
 import { feedbackService } from '@/services/feedbackService';
@@ -11,6 +12,8 @@ interface ChatMessageProps {
   isUser: boolean;
   timestamp: Date;
   messageId?: string;
+  hasAudio?: boolean;
+  onPlayAudio?: (text: string, messageId: string) => void;
 }
 
 const getMessageStyle = (message: string) => {
@@ -104,7 +107,7 @@ const getMessageStyle = (message: string) => {
   };
 };
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp, messageId }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp, messageId, hasAudio, onPlayAudio }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [categoryName, setCategoryName] = useState('');
   const messageStyle = !isUser ? getMessageStyle(message) : null;
@@ -245,11 +248,24 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, isUser, timestamp, m
               {format(timestamp, 'HH:mm', { locale: ptBR })}
             </p>
             {!isUser && messageId && messageId !== '1' && (
-              <FeedbackButtons
-                messageId={messageId}
-                messageText={message}
-                onFeedback={handleFeedback}
-              />
+              <div className="flex items-center justify-between mt-2">
+                <FeedbackButtons
+                  messageId={messageId}
+                  messageText={message}
+                  onFeedback={handleFeedback}
+                />
+                {hasAudio && onPlayAudio && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onPlayAudio(message, messageId)}
+                    className="ml-2 h-8 px-2 hover:bg-orange-100 dark:hover:bg-orange-900/20"
+                  >
+                    <Volume2 className="w-3 h-3 text-orange-600 mr-1" />
+                    <span className="text-xs text-orange-600">Ouvir</span>
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </div>
