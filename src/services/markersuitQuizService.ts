@@ -1,12 +1,12 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import politicasData from '../data/PoliticasShopee.json';
-import { generateQuizWithMarkersuit } from './markersuitQuizService';
 
-const API_KEY = 'AIzaSyDNm9chlq0QHcFGcCM_2TTxTczqrCC7GFE';
-const genAI = new GoogleGenerativeAI(API_KEY);
+// Markersuit API configuration for quiz
+const MARKERSUIT_QUIZ_API_KEY = 'AIzaSyD0v8xFVRfUoLwORYOxgIkHKmuDIWP1fOo';
+const markersuitQuizAI = new GoogleGenerativeAI(MARKERSUIT_QUIZ_API_KEY);
 
-// Lista de modelos para quiz em ordem de preferência
-const QUIZ_MODELS = [
+// Lista de modelos Markersuit para quiz em ordem de preferência
+const MARKERSUIT_QUIZ_MODELS = [
   'gemini-2.5-pro',
   'gemini-2.5-flash', 
   'gemini-2.5-flash-lite',
@@ -16,18 +16,18 @@ const QUIZ_MODELS = [
   'gemini-2.0-flash-lite'
 ];
 
-// Contador para alternância de modelos do quiz
-let quizModelIndex = 0;
+// Contador para alternância de modelos do quiz Markersuit
+let markersuitQuizModelIndex = 0;
 
-// Função para obter o próximo modelo do quiz
-function getNextQuizModel(): string {
-  const model = QUIZ_MODELS[quizModelIndex % QUIZ_MODELS.length];
-  quizModelIndex++;
-  console.log(`Usando modelo para quiz: ${model} (index: ${quizModelIndex - 1})`);
+// Função para obter o próximo modelo do quiz Markersuit
+function getNextMarkersuitQuizModel(): string {
+  const model = MARKERSUIT_QUIZ_MODELS[markersuitQuizModelIndex % MARKERSUIT_QUIZ_MODELS.length];
+  markersuitQuizModelIndex++;
+  console.log(`[MARKERSUIT QUIZ] Usando modelo para quiz: ${model} (index: ${markersuitQuizModelIndex - 1})`);
   return model;
 }
 
-const QUIZ_SYSTEM_INSTRUCTION = `Você é um especialista em políticas da Shopee responsável por criar perguntas de quiz educativas.
+const MARKERSUIT_QUIZ_SYSTEM_INSTRUCTION = `Você é um especialista em políticas da Shopee responsável por criar perguntas de quiz educativas.
 
 OBJETIVO: Criar perguntas técnicas e neutras sobre limites, especificações e regulamentações da Shopee.
 
@@ -63,28 +63,30 @@ CATEGORIAS PARA FOCAR:
 - Ferramentas (especificações técnicas)
 - Bebidas e alimentos (percentuais, aditivos)`;
 
-function createQuizModel(modelName: string) {
-  return genAI.getGenerativeModel({
+function createMarkersuitQuizModel(modelName: string) {
+  return markersuitQuizAI.getGenerativeModel({
     model: modelName,
-    systemInstruction: QUIZ_SYSTEM_INSTRUCTION,
+    systemInstruction: MARKERSUIT_QUIZ_SYSTEM_INSTRUCTION,
   });
 }
 
-// Função auxiliar para delay no quiz
-function delayQuiz(ms: number): Promise<void> {
+// Função auxiliar para delay no quiz Markersuit
+function delayMarkersuitQuiz(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Função para gerar conteúdo com fallback para quiz
-async function generateQuizWithFallback(prompt: string, retryCount: number = 0): Promise<any> {
-  const selectedModel = getNextQuizModel();
+// Função para gerar conteúdo com fallback para quiz Markersuit
+async function generateMarkersuitQuizWithFallback(prompt: string, retryCount: number = 0): Promise<any> {
+  const selectedModel = getNextMarkersuitQuizModel();
   
   try {
-    const model = createQuizModel(selectedModel);
+    console.log(`[MARKERSUIT QUIZ] Tentando gerar quiz com modelo: ${selectedModel}`);
+    const model = createMarkersuitQuizModel(selectedModel);
     const result = await model.generateContent(prompt);
+    console.log(`[MARKERSUIT QUIZ] Sucesso com modelo: ${selectedModel}`);
     return await result.response;
   } catch (error: any) {
-    console.error(`Erro com modelo de quiz ${selectedModel} (tentativa ${retryCount + 1}):`, error);
+    console.error(`[MARKERSUIT QUIZ] Erro com modelo de quiz ${selectedModel} (tentativa ${retryCount + 1}):`, error);
     
     const isRetryableError = 
       error?.message?.includes('503') || 
@@ -96,16 +98,16 @@ async function generateQuizWithFallback(prompt: string, retryCount: number = 0):
     
     if (isRetryableError && retryCount < 3) {
       const delayTime = 1500 * Math.pow(1.3, retryCount);
-      console.log(`Modelo ${selectedModel} sobrecarregado. Tentando próximo modelo após ${delayTime}ms...`);
-      await delayQuiz(delayTime);
-      return generateQuizWithFallback(prompt, retryCount + 1);
+      console.log(`[MARKERSUIT QUIZ] Modelo ${selectedModel} sobrecarregado. Tentando próximo modelo após ${delayTime}ms...`);
+      await delayMarkersuitQuiz(delayTime);
+      return generateMarkersuitQuizWithFallback(prompt, retryCount + 1);
     }
     
     throw error;
   }
 }
 
-export interface AIQuizQuestion {
+export interface MarkersuitQuizQuestion {
   id: string;
   question: string;
   options: string[];
@@ -115,8 +117,9 @@ export interface AIQuizQuestion {
   difficulty: 'easy' | 'medium' | 'hard';
 }
 
-export const generateQuizWithGemini = async (count: number = 5, difficulty: 'easy' | 'medium' | 'hard' = 'medium'): Promise<AIQuizQuestion[]> => {
+export const generateQuizWithMarkersuit = async (count: number = 5, difficulty: 'easy' | 'medium' | 'hard' = 'medium'): Promise<MarkersuitQuizQuestion[]> => {
   try {
+    console.log(`[MARKERSUIT QUIZ] Iniciando geração de ${count} perguntas de nível ${difficulty}...`);
     
     // Preparar contexto das políticas
     const politicasTexto = politicasData.categorias
@@ -161,7 +164,7 @@ FORMATO DE SAÍDA (JSON):
 
 IMPORTANTE: Responda APENAS com o JSON válido, sem texto adicional.`;
 
-    const response = await generateQuizWithFallback(prompt);
+    const response = await generateMarkersuitQuizWithFallback(prompt);
     let text = response.text();
 
     // Limpar possível markdown do JSON
@@ -171,8 +174,8 @@ IMPORTANTE: Responda APENAS com o JSON válido, sem texto adicional.`;
       const jsonResponse = JSON.parse(text);
       const questions = jsonResponse.questions || [];
 
-      return questions.map((q: any, index: number) => ({
-        id: `gemini-q-${Date.now()}-${index}`,
+      const formattedQuestions = questions.map((q: any, index: number) => ({
+        id: `markersuit-q-${Date.now()}-${index}`,
         question: q.question || `Pergunta ${index + 1}`,
         options: q.options || ['Opção A', 'Opção B', 'Opção C', 'Opção D'],
         correctAnswer: q.correctAnswer || 0,
@@ -181,36 +184,28 @@ IMPORTANTE: Responda APENAS com o JSON válido, sem texto adicional.`;
         difficulty: difficulty
       }));
 
+      console.log(`[MARKERSUIT QUIZ] Sucesso! Geradas ${formattedQuestions.length} perguntas`);
+      return formattedQuestions;
+
     } catch (parseError) {
-      console.error('Erro ao fazer parse do JSON:', parseError);
-      console.log('Resposta recebida:', text);
+      console.error('[MARKERSUIT QUIZ] Erro ao fazer parse do JSON:', parseError);
+      console.log('[MARKERSUIT QUIZ] Resposta recebida:', text);
       
       // Fallback para perguntas pré-definidas se o JSON falhar
-      return getFallbackQuestions(count, difficulty);
+      return getMarkersuitFallbackQuestions(count, difficulty);
     }
 
   } catch (error) {
-    console.error('Erro ao gerar quiz com Gemini:', error);
-    
-    // Tentar com API Markersuit como fallback
-    try {
-      console.log('Tentando gerar quiz com API Markersuit como fallback...');
-      const markersuitQuestions = await generateQuizWithMarkersuit(count, difficulty);
-      console.log('Sucesso com API Markersuit para quiz!');
-      return markersuitQuestions;
-    } catch (markersuitError) {
-      console.error('Erro também com API Markersuit para quiz:', markersuitError);
-      console.log('Usando perguntas de fallback pré-definidas...');
-      return getFallbackQuestions(count, difficulty);
-    }
+    console.error('[MARKERSUIT QUIZ] Erro ao gerar quiz com Markersuit:', error);
+    return getMarkersuitFallbackQuestions(count, difficulty);
   }
 };
 
-// Perguntas de fallback caso a IA falhe
-const getFallbackQuestions = (count: number, difficulty: 'easy' | 'medium' | 'hard' = 'medium'): AIQuizQuestion[] => {
+// Perguntas de fallback caso a IA Markersuit falhe
+const getMarkersuitFallbackQuestions = (count: number, difficulty: 'easy' | 'medium' | 'hard' = 'medium'): MarkersuitQuizQuestion[] => {
   const fallbackQuestions = [
     {
-      id: 'fallback-1',
+      id: 'markersuit-fallback-1',
       question: 'Qual é o limite de decibéis para alarmes pessoais?',
       options: ['100dB', '120dB', '140dB', '160dB'],
       correctAnswer: 2,
@@ -219,7 +214,7 @@ const getFallbackQuestions = (count: number, difficulty: 'easy' | 'medium' | 'ha
       difficulty: difficulty
     },
     {
-      id: 'fallback-2',
+      id: 'markersuit-fallback-2',
       question: 'Qual é o tamanho máximo permitido para facas de cozinha?',
       options: ['20cm', '25cm', '30cm', '35cm'],
       correctAnswer: 2,
@@ -228,7 +223,7 @@ const getFallbackQuestions = (count: number, difficulty: 'easy' | 'medium' | 'ha
       difficulty: difficulty
     },
     {
-      id: 'fallback-3',
+      id: 'markersuit-fallback-3',
       question: 'Qual concentração máxima de álcool é permitida em produtos de limpeza?',
       options: ['50%', '70%', '80%', '90%'],
       correctAnswer: 1,
@@ -237,7 +232,7 @@ const getFallbackQuestions = (count: number, difficulty: 'easy' | 'medium' | 'ha
       difficulty: difficulty
     },
     {
-      id: 'fallback-4',
+      id: 'markersuit-fallback-4',
       question: 'Qual é a potência máxima permitida para lasers em produtos eletrônicos?',
       options: ['Classe 1', 'Classe 2', 'Classe 3A', 'Classe 3B'],
       correctAnswer: 0,
@@ -246,7 +241,7 @@ const getFallbackQuestions = (count: number, difficulty: 'easy' | 'medium' | 'ha
       difficulty: difficulty
     },
     {
-      id: 'fallback-5',
+      id: 'markersuit-fallback-5',
       question: 'Qual é a voltagem máxima para dispositivos eletrônicos portáteis?',
       options: ['12V', '24V', '48V', '110V'],
       correctAnswer: 1,
@@ -260,6 +255,6 @@ const getFallbackQuestions = (count: number, difficulty: 'easy' | 'medium' | 'ha
 };
 
 export default {
-  generateQuizWithGemini,
-  getFallbackQuestions
+  generateQuizWithMarkersuit,
+  getMarkersuitFallbackQuestions
 };

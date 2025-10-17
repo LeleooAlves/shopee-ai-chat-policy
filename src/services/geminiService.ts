@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import politicasData from '../data/PoliticasShopee.json';
+import { sendMessageToMarkersuit, analyzeMultipleProductsWithMarkersuit } from './markersuitService';
 
 // Cache das políticas para melhor performance
 let politicasCache: string | null = null;
@@ -263,7 +264,17 @@ Onde CLASSIFICAÇÃO deve ser exatamente uma das opções: PERMITIDO, PROIBIDO, 
     return results;
   } catch (error) {
     console.error('Erro ao analisar múltiplos produtos:', error);
-    throw new Error('Desculpe, ocorreu um erro ao processar os produtos. Tente novamente.');
+    
+    // Tentar com API Markersuit como fallback
+    try {
+      console.log('Tentando análise de múltiplos produtos com API Markersuit como fallback...');
+      const markersuitResults = await analyzeMultipleProductsWithMarkersuit(products);
+      console.log('Sucesso com API Markersuit para múltiplos produtos!');
+      return markersuitResults;
+    } catch (markersuitError) {
+      console.error('Erro também com API Markersuit para múltiplos produtos:', markersuitError);
+      throw new Error('Desculpe, ocorreu um erro ao processar os produtos. Ambas as APIs estão indisponíveis. Tente novamente.');
+    }
   }
 };
 
@@ -470,6 +481,16 @@ Onde CLASSIFICAÇÃO deve ser exatamente uma das opções: PERMITIDO, PROIBIDO, 
     return responseText;
   } catch (error) {
     console.error('Erro ao comunicar com Gemini:', error);
-    throw new Error('Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente.');
+    
+    // Tentar com API Markersuit como fallback
+    try {
+      console.log('Tentando com API Markersuit como fallback...');
+      const markersuitResponse = await sendMessageToMarkersuit(message);
+      console.log('Sucesso com API Markersuit!');
+      return markersuitResponse;
+    } catch (markersuitError) {
+      console.error('Erro também com API Markersuit:', markersuitError);
+      throw new Error('Desculpe, ocorreu um erro ao processar sua mensagem. Ambas as APIs estão indisponíveis. Tente novamente.');
+    }
   }
 };
