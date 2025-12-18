@@ -13,7 +13,7 @@ const updateVersionPlugin = () => ({
       timestamp: new Date().toISOString(),
       buildId: Date.now().toString()
     };
-    
+
     fs.writeFileSync(
       path.resolve(__dirname, 'public/version.json'),
       JSON.stringify(versionData, null, 2)
@@ -31,6 +31,11 @@ export default defineConfig(({ mode }) => ({
         target: 'http://localhost:3000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/api')
+      },
+      '/insea-api': {
+        target: 'https://knowledge.alpha.insea.io',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/insea-api/, '/api')
       }
     }
   },

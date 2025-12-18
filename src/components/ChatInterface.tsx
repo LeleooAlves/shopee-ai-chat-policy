@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import LoadingTipModal from './LoadingTipModal';
-import { sendMessageToGemini } from '@/services/geminiService';
+import { sendMessageToAI } from '@/services/aiService';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Message {
@@ -80,11 +80,11 @@ const ChatInterface: React.FC = () => {
   const [loadingTip, setLoadingTip] = useState('');
   const [loadingQuery, setLoadingQuery] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  
+
   // Função para busca semântica
   const enhanceQuery = (query: string): string => {
     let enhancedQuery = query.toLowerCase();
-    
+
     // Expandir sinônimos
     Object.entries(PRODUCT_SYNONYMS).forEach(([key, synonyms]) => {
       synonyms.forEach(synonym => {
@@ -93,48 +93,48 @@ const ChatInterface: React.FC = () => {
         }
       });
     });
-    
+
     return enhancedQuery;
   };
-  
+
   // Função para obter dicas contextuais (apenas para consultas vagas)
   const getContextualTip = (query: string): string | null => {
     const lowerQuery = query.toLowerCase();
-    
+
     // Verificar se a consulta já tem informações suficientes
     const hasNumbers = /\d/.test(query); // Tem números (tamanho, concentração, etc.)
     const hasSpecificTerms = /\b(cm|ml|g|kg|%|volt|v|mah|cal|calibre|watts?|w)\b/i.test(query);
     const hasDetailedDescription = query.trim().split(' ').length > 2; // Mais de 2 palavras
-    
+
     // Se já tem detalhes suficientes, não mostrar dica
     if (hasNumbers || hasSpecificTerms || hasDetailedDescription) {
       return null;
     }
-    
+
     // Verificar palavras-chave apenas para consultas simples
     for (const [keyword, tip] of Object.entries(CONTEXTUAL_TIPS)) {
       if (lowerQuery === keyword || lowerQuery === keyword + 's') { // Exato ou plural
         return tip;
       }
     }
-    
+
     // Verificar sinônimos apenas para consultas simples
     for (const [mainWord, synonyms] of Object.entries(PRODUCT_SYNONYMS)) {
       if (synonyms.some(synonym => lowerQuery === synonym || lowerQuery === synonym + 's')) {
         return CONTEXTUAL_TIPS[mainWord] || null;
       }
     }
-    
+
     return null;
   };
-  
+
   // Função para Text-to-Speech
   const speakText = (text: string, messageId: string) => {
     // Parar fala atual se existir
     if (currentSpeech) {
       speechSynthesis.cancel();
     }
-    
+
     // Limpar texto para fala (remover markdown e formatação)
     const cleanText = text
       .replace(/\*\*(.*?)\*\*/g, '$1') // Remover negrito
@@ -142,25 +142,25 @@ const ChatInterface: React.FC = () => {
       .replace(/\[.*?\]/g, '') // Remover classificações
       .replace(/https?:\/\/[^\s]+/g, 'link') // Substituir URLs
       .replace(/\n/g, '. '); // Quebras de linha como pausas
-    
+
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = 'pt-BR';
     utterance.rate = 0.9;
     utterance.pitch = 1;
-    
+
     utterance.onend = () => {
       setCurrentSpeech(null);
     };
-    
+
     utterance.onerror = () => {
       setCurrentSpeech(null);
       toast.error('Erro ao reproduzir áudio');
     };
-    
+
     setCurrentSpeech(utterance);
     speechSynthesis.speak(utterance);
   };
-  
+
   // Função para parar fala
   const stopSpeech = () => {
     if (currentSpeech) {
@@ -184,13 +184,13 @@ const ChatInterface: React.FC = () => {
 
   const handleSendMessage = async (messageText: string, skipAI: boolean = false) => {
     if (isLoading && !skipAI) return; // bloqueia enquanto aguarda a IA responder
-    
+
     // Aplicar busca semântica
     const enhancedQuery = enhanceQuery(messageText);
-    
+
     // Obter dica contextual
     const tip = getContextualTip(messageText);
-    
+
     const userMessage: Message = {
       id: Date.now().toString(),
       text: messageText,
@@ -206,7 +206,7 @@ const ChatInterface: React.FC = () => {
     if (skipAI) return;
 
     setIsLoading(true);
-    
+
     // Mostrar modal com dica durante carregamento
     if (tip) {
       setLoadingTip(tip);
@@ -215,8 +215,8 @@ const ChatInterface: React.FC = () => {
     }
 
     try {
-      const response = await sendMessageToGemini(enhancedQuery);
-      
+      const response = await sendMessageToAI(enhancedQuery);
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: response,
@@ -224,11 +224,11 @@ const ChatInterface: React.FC = () => {
         timestamp: new Date(),
         hasAudio: true
       };
-      
+
       const finalMessages = [...updatedMessages, aiMessage];
       setMessages(finalMessages);
       saveMessagesToStorage(finalMessages);
-      
+
     } catch (error) {
       toast.error('Erro ao enviar mensagem. Tente novamente.');
       console.error('Erro:', error);
@@ -251,7 +251,7 @@ const ChatInterface: React.FC = () => {
       isUser: false,
       timestamp: new Date(),
     };
-    
+
     setMessages(prevMessages => {
       const newMessages = [...prevMessages, aiMessage];
       saveMessagesToStorage(newMessages);
@@ -278,7 +278,7 @@ const ChatInterface: React.FC = () => {
       }
     };
   }, [currentSpeech]);
-  
+
   // Expor funções globalmente para o botão no header e outros componentes
   React.useEffect(() => {
     (window as any).clearShopeeChat = clearChat;
@@ -298,7 +298,7 @@ const ChatInterface: React.FC = () => {
         tip={loadingTip}
         query={loadingQuery}
       />
-      
+
       <div className="h-full flex flex-col bg-white dark:bg-gray-800 relative">
         <div className="flex-1 overflow-hidden">
           <ScrollArea ref={scrollAreaRef} className="h-full">

@@ -7,48 +7,45 @@ const PWAInstallPrompt: React.FC = () => {
   const [isVisible, setIsVisible] = useState(true);
   const [notificationPermission, setNotificationPermission] = useState<string>('default');
 
+  const hidePermanently = () => {
+    localStorage.setItem('shopee-pwa-prompt-hidden', 'true');
+    setIsVisible(false);
+  };
+
   const handleInstall = async () => {
     const success = await installApp();
     if (success) {
-      setIsVisible(false);
-      // Show success notification
       showNotification('App Instalado!', {
         body: 'O Shopee IA foi instalado com sucesso no seu dispositivo.',
         icon: '/favicon-96x96.png'
       });
     }
+    hidePermanently();
   };
 
   const handleNotificationRequest = async () => {
     const permission = await requestNotificationPermission();
     setNotificationPermission(permission);
-    
+
     if (permission === 'granted') {
       showNotification('Notificações Ativadas!', {
         body: 'Você receberá atualizações importantes do sistema.',
         icon: '/favicon-96x96.png'
       });
     }
+    hidePermanently();
   };
 
   const handleDismiss = () => {
-    setIsVisible(false);
-    // Store dismissal in localStorage to avoid showing again for a while
-    localStorage.setItem('pwa-prompt-dismissed', Date.now().toString());
+    hidePermanently();
   };
 
-  // Don't show if already installed or dismissed recently
-  if (isInstalled || !isInstallable || !isVisible) {
-    return null;
-  }
+  // Check if permanently hidden in localStorage
+  const isPermanentlyHidden = localStorage.getItem('shopee-pwa-prompt-hidden') === 'true';
 
-  // Check if dismissed recently (within 7 days)
-  const dismissedTime = localStorage.getItem('pwa-prompt-dismissed');
-  if (dismissedTime) {
-    const daysSinceDismissed = (Date.now() - parseInt(dismissedTime)) / (1000 * 60 * 60 * 24);
-    if (daysSinceDismissed < 7) {
-      return null;
-    }
+  // Don't show if already installed, not installable, or hidden
+  if (isInstalled || !isInstallable || !isVisible || isPermanentlyHidden) {
+    return null;
   }
 
   return (

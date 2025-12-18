@@ -32,42 +32,42 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
 
   const handleMultiProductAnalysis = async (products: string[]) => {
     setIsAnalyzing(true);
-    
+
     // Importar a função de análise múltipla
-    const { analyzeMultipleProducts } = await import('@/services/geminiService');
-    
+    const { analyzeMultipleProducts } = await import('@/services/aiService');
+
     try {
       // Enviar mensagem inicial do usuário (sem chamar IA)
       const productList = products.map((product, index) => `${index + 1}. ${product}`).join('\n');
       const userMessage = `Análise em lote de ${products.length} produtos:\n\n${productList}`;
       onSendMessage(userMessage, true); // skipAI = true
-      
+
       // Ativar estado de loading no ChatInterface para mostrar efeito "digitando"
       if ((window as any).setMultiAnalysisLoading) {
         (window as any).setMultiAnalysisLoading(true);
       }
-      
+
       // Analisar produtos individualmente
       const results = await analyzeMultipleProducts(products);
-      
+
       // Desativar estado de loading
       if ((window as any).setMultiAnalysisLoading) {
         (window as any).setMultiAnalysisLoading(false);
       }
-      
+
       // Enviar cada resultado como mensagem separada do bot
       for (const result of results) {
         const individualMessage = `Produto ${result.productNumber}: ${result.productName}\n\n${result.analysis}`;
-        
+
         // Usar função global para adicionar mensagem do bot
         if ((window as any).addBotMessage) {
           (window as any).addBotMessage(individualMessage);
         }
-        
+
         // Pequeno delay entre mensagens para melhor UX
         await new Promise(resolve => setTimeout(resolve, 500));
       }
-      
+
     } catch (error) {
       console.error('Erro na análise múltipla:', error);
       // Desativar estado de loading em caso de erro
@@ -88,24 +88,22 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
       <div className="flex items-center gap-1 sm:gap-2 p-2 sm:p-3 border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={() => setInputMode('text')}
-          className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm transition-colors duration-200 ${
-            inputMode === 'text'
+          className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm transition-colors duration-200 ${inputMode === 'text'
               ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
               : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50 dark:text-gray-300 dark:hover:text-orange-400 dark:hover:bg-gray-700'
-          }`}
+            }`}
         >
           <Send className="w-3 sm:w-4 h-3 sm:h-4" />
           <span className="hidden sm:inline">Texto</span>
           <span className="sm:hidden">Chat</span>
         </button>
-        
+
         <button
           onClick={() => setInputMode('multi')}
-          className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm transition-colors duration-200 ${
-            inputMode === 'multi'
+          className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm transition-colors duration-200 ${inputMode === 'multi'
               ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
               : 'text-gray-600 hover:text-orange-600 hover:bg-orange-50 dark:text-gray-300 dark:hover:text-orange-400 dark:hover:bg-gray-700'
-          }`}
+            }`}
         >
           <Package className="w-3 sm:w-4 h-3 sm:h-4" />
           <span className="hidden sm:inline">Múltiplos</span>
@@ -126,8 +124,8 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
                 className="min-h-[40px] sm:min-h-[50px] max-h-[100px] sm:max-h-[120px] resize-none flex-1 text-sm sm:text-base"
                 disabled={isLoading}
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 size="icon"
                 disabled={!message.trim() || isLoading}
                 className="h-[40px] sm:h-[50px] w-[40px] sm:w-[50px] flex-shrink-0 bg-orange-500 hover:bg-orange-600"
@@ -143,7 +141,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
         )}
 
         {inputMode === 'multi' && (
-          <MultiProductInput 
+          <MultiProductInput
             onAnalyzeProducts={handleMultiProductAnalysis}
             isAnalyzing={isAnalyzing || isLoading}
           />
